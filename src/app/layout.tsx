@@ -79,6 +79,32 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/*
+         * FOUC safety net — runs synchronously during HTML parse, BEFORE
+         * the body renders. Adds `js` class to <html> so the CSS rule
+         * `html.js [data-hero-step] { opacity: 0 }` (and friends) can
+         * pre-hide the hero choreography targets. Without this, the SSR
+         * markup would paint visibly for ~50–500ms before React hydrates
+         * and GSAP's `from()` tweens can claim the elements — producing
+         * the "doctor dashboard shows briefly then goes blank" flash.
+         *
+         * If JS is disabled, this script never runs, `html.js` is never
+         * set, and the hero content stays visible (good for SEO / no-JS).
+         *
+         * Fallback: if GSAP hasn't loaded within 5s (e.g. chunked import
+         * failed), remove `js` so the content becomes visible again.
+         * This is a safety valve only — in normal operation GSAP has
+         * long since applied inline `opacity:0` (which overrides CSS),
+         * so removing the class has no effect there.
+         */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{document.documentElement.classList.add('js');setTimeout(function(){if(!window.__gsap_claimed){document.documentElement.classList.remove('js');}},5000);}catch(e){}})();",
+          }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >

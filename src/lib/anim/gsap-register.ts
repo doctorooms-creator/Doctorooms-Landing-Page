@@ -2,7 +2,7 @@
 
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { useSyncExternalStore, useEffect, useRef } from "react";
+import { useSyncExternalStore, useEffect, useLayoutEffect, useRef } from "react";
 
 // Register once on the client.
 if (typeof window !== "undefined") {
@@ -40,12 +40,19 @@ export function useReducedMotion(): boolean {
 }
 
 /**
- * useIsomorphicLayoutEffect — runs useLayoutEffect on the client,
- * useEffect on the server. Used by GSAP setup so timelines are built
- * after the DOM is painted.
+ * useIsomorphicLayoutEffect — runs useLayoutEffect on the client
+ * (synchronous, BEFORE browser paint) so GSAP can apply the `from()`
+ * initial state (opacity:0 etc.) before the user sees the SSR markup.
+ * Falls back to useEffect on the server to avoid the React SSR warning.
+ *
+ * IMPORTANT: previously this returned useEffect on the client too,
+ * which caused a FOUC (flash of unstyled content) — the SSR markup
+ * painted visibly for ~1 frame, then GSAP's `from()` hid it to start
+ * the timeline. This is what produced the "doctor dashboard shows
+ * briefly then goes blank" symptom on the hero.
  */
 export const useIsomorphicLayoutEffect =
-  typeof window !== "undefined" ? useEffect : (cb: () => void) => {};
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 /**
  * useGsapRef — returns a ref you can attach to a container, plus a

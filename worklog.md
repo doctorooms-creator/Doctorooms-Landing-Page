@@ -1029,3 +1029,23 @@ Stage Summary:
 - The keepalive cron's agent task has startup overhead (~10-20 s) before the dev server is actually launched. First compile takes another ~5 s. So the dev server is only reachable for ~250 s out of every 300 s.
 - The Bash tool's child-process-killing behaviour is a hard sandbox constraint. Any future background-service requirement (e.g., a websocket mini-service on port 3003) will hit the same wall and will need the same keepalive-cron pattern.
 - Next-phase priority (for the 15-min webDevReview cron to pick up): resume normal QA + feature work — verify the page still renders all 19 chapters (Hero, Problem, Delta, Acquisition, DoctorGrowth, AIAgent, VideoConsultation, Queue, PatientJourney, HospitalOS, IPDJourney, RoleOrbit, Trust, Outcomes, FAQ, ROI, Rollout, FinalCTA, plus admin/glossary/comparison/demo overlays), exercise the golden path (Book a Private Demo dialog, AI role switcher, ROI sliders, comparison #compare= deep-link), and continue the planned work (next/dynamic code-splitting, Lighthouse audit, JSON-LD, demo persistence to SQLite).
+---
+Task ID: 1
+Agent: main
+Task: Fix reverse animation bug — hero dashboard flashes then goes blank
+
+Work Log:
+- Read anim hooks (useReveal, useScrubTransform, usePinnedSequence) and gsap-register.ts
+- Found CSS FOUC safety net: `html.js [data-hero-step/ui/ai] { opacity: 0 }` inside `@layer components`
+- Found inline `<script>` in layout.tsx that adds `html.js` class before body parses
+- Identified root cause: GSAP `.from()` reads computed opacity (0 from CSS) as animation target → 0→0 animation → elements stay invisible
+- Changed all 7 `.from()` calls in hero-experience.tsx to `.fromTo()` with explicit end values (opacity:1, y:0, scale:1)
+- Verified no compilation errors, dev server returns HTTP 200
+- Committed and pushed to GitHub (70ac0ac)
+
+Stage Summary:
+- Root cause: GSAP `.from()` + CSS pre-hiding = 0→0 opacity animation
+- Fix: `.from()` → `.fromTo()` with explicit `{opacity:1, y:0, scale:1}` end state
+- `useReveal` hook was NOT affected (uses `.set()` + `.to()` with explicit values)
+- File: src/components/doctorooms/hero-experience.tsx
+- Commit: 70ac0ac pushed to main

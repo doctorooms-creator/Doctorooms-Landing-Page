@@ -1,0 +1,970 @@
+     1→     1→@import "tailwindcss";
+     2→     2→@import "tw-animate-css";
+     3→     3→
+     4→     4→@custom-variant dark (&:is(.dark *));
+     5→     5→
+     6→     6→@theme inline {
+     7→     7→  --color-background: var(--background);
+     8→     8→  --color-foreground: var(--foreground);
+     9→     9→  --font-sans: var(--font-geist-sans);
+    10→    10→  --font-mono: var(--font-geist-mono);
+    11→    11→  --color-sidebar-ring: var(--sidebar-ring);
+    12→    12→  --color-sidebar-border: var(--sidebar-border);
+    13→    13→  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    14→    14→  --color-sidebar-accent: var(--sidebar-accent);
+    15→    15→  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    16→    16→  --color-sidebar-primary: var(--sidebar-primary);
+    17→    17→  --color-sidebar-foreground: var(--sidebar-foreground);
+    18→    18→  --color-sidebar: var(--sidebar);
+    19→    19→  --color-chart-5: var(--chart-5);
+    20→    20→  --color-chart-4: var(--chart-4);
+    21→    21→  --color-chart-3: var(--chart-3);
+    22→    22→  --color-chart-2: var(--chart-2);
+    23→    23→  --color-chart-1: var(--chart-1);
+    24→    24→  --color-ring: var(--ring);
+    25→    25→  --color-input: var(--input);
+    26→    26→  --color-border: var(--border);
+    27→    27→  --color-destructive: var(--destructive);
+    28→    28→  --color-accent-foreground: var(--accent-foreground);
+    29→    29→  --color-accent: var(--accent);
+    30→    30→  --color-muted-foreground: var(--muted-foreground);
+    31→    31→  --color-muted: var(--muted);
+    32→    32→  --color-secondary-foreground: var(--secondary-foreground);
+    33→    33→  --color-secondary: var(--secondary);
+    34→    34→  --color-primary-foreground: var(--primary-foreground);
+    35→    35→  --color-primary: var(--primary);
+    36→    36→  --color-popover-foreground: var(--popover-foreground);
+    37→    37→  --color-popover: var(--popover);
+    38→    38→  --color-card-foreground: var(--card-foreground);
+    39→    39→  --color-card: var(--card);
+    40→    40→  --radius-sm: calc(var(--radius) - 4px);
+    41→    41→  --radius-md: calc(var(--radius) - 2px);
+    42→    42→  --radius-lg: var(--radius);
+    43→    43→  --radius-xl: calc(var(--radius) + 4px);
+    44→    44→
+    45→    45→  /* Doctorooms brand palette */
+    46→    46→  --color-brand: var(--brand);
+    47→    47→  --color-brand-foreground: var(--brand-foreground);
+    48→    48→  --color-brand-soft: var(--brand-soft);
+    49→    49→  --color-brand-deep: var(--brand-deep);
+    50→    50→  --color-growth: var(--growth);
+    51→    51→  --color-growth-foreground: var(--growth-foreground);
+    52→    52→  --color-ink: var(--ink);
+    53→    53→  --color-ink-foreground: var(--ink-foreground);
+    54→    54→  --color-ink-muted: var(--ink-muted);
+    55→    55→  --color-ink-border: var(--ink-border);
+    56→    56→}
+    57→    57→
+    58→    58→:root {
+    59→    59→  --radius: 0.75rem;
+    60→    60→
+    61→    61→  /* Light surfaces — premium clinical calm */
+    62→    62→  --background: oklch(0.992 0.004 180);
+    63→    63→  --foreground: oklch(0.18 0.03 245);
+    64→    64→  --card: oklch(1 0 0);
+    65→    65→  --card-foreground: oklch(0.18 0.03 245);
+    66→    66→  --popover: oklch(1 0 0);
+    67→    67→  --popover-foreground: oklch(0.18 0.03 245);
+    68→    68→
+    69→    69→  /* Primary = deep teal — clinical, premium, NOT blue */
+    70→    70→  --primary: oklch(0.42 0.09 188);
+    71→    71→  --primary-foreground: oklch(0.99 0.005 180);
+    72→    72→  --secondary: oklch(0.96 0.012 180);
+    73→    73→  --secondary-foreground: oklch(0.25 0.04 188);
+    74→    74→  --muted: oklch(0.96 0.008 180);
+    75→    75→  --muted-foreground: oklch(0.48 0.025 190);
+    76→    76→  --accent: oklch(0.94 0.04 165);
+    77→    77→  --accent-foreground: oklch(0.22 0.05 165);
+    78→    78→  --destructive: oklch(0.577 0.245 27.325);
+    79→    79→  --border: oklch(0.9 0.015 185);
+    80→    80→  --input: oklch(0.92 0.012 185);
+    81→    81→  --ring: oklch(0.42 0.09 188);
+    82→    82→
+    83→    83→  --chart-1: oklch(0.55 0.12 188);
+    84→    84→  --chart-2: oklch(0.68 0.14 162);
+    85→    85→  --chart-3: oklch(0.7 0.16 84);
+    86→    86→  --chart-4: oklch(0.62 0.18 305);
+    87→    87→  --chart-5: oklch(0.65 0.2 16);
+    88→    88→
+    89→    89→  --sidebar: oklch(0.985 0.004 180);
+    90→    90→  --sidebar-foreground: oklch(0.18 0.03 245);
+    91→    91→  --sidebar-primary: oklch(0.42 0.09 188);
+    92→    92→  --sidebar-primary-foreground: oklch(0.99 0.005 180);
+    93→    93→  --sidebar-accent: oklch(0.94 0.04 165);
+    94→    94→  --sidebar-accent-foreground: oklch(0.22 0.05 165);
+    95→    95→  --sidebar-border: oklch(0.9 0.015 185);
+    96→    96→  --sidebar-ring: oklch(0.42 0.09 188);
+    97→    97→
+    98→    98→  /* Doctorooms brand */
+    99→    99→  --brand: oklch(0.45 0.1 188);          /* deep teal */
+   100→   100→  --brand-foreground: oklch(0.99 0.005 180);
+   101→   101→  --brand-soft: oklch(0.9 0.05 175);     /* soft teal mist */
+   102→   102→  --brand-deep: oklch(0.28 0.06 195);    /* deeper teal for depth */
+   103→   103→  --growth: oklch(0.6 0.13 158);         /* emerald growth */
+   104→   104→  --growth-foreground: oklch(0.99 0.005 165);
+   105→   105→  --ink: oklch(0.16 0.022 245);          /* cinematic ink */
+   106→   106→  --ink-foreground: oklch(0.97 0.006 185);
+   107→   107→  --ink-muted: oklch(0.66 0.02 200);
+   108→   108→  --ink-border: oklch(1 0 0 / 12%);
+   109→   109→}
+   110→   110→
+   111→   111→.dark {
+   112→   112→  --background: oklch(0.16 0.022 245);
+   113→   113→  --foreground: oklch(0.97 0.006 185);
+   114→   114→  --card: oklch(0.21 0.025 245);
+   115→   115→  --card-foreground: oklch(0.97 0.006 185);
+   116→   116→  --popover: oklch(0.21 0.025 245);
+   117→   117→  --popover-foreground: oklch(0.97 0.006 185);
+   118→   118→  --primary: oklch(0.7 0.12 185);
+   119→   119→  --primary-foreground: oklch(0.16 0.022 245);
+   120→   120→  --secondary: oklch(0.26 0.03 245);
+   121→   121→  --secondary-foreground: oklch(0.97 0.006 185);
+   122→   122→  --muted: oklch(0.26 0.03 245);
+   123→   123→  --muted-foreground: oklch(0.7 0.02 195);
+   124→   124→  --accent: oklch(0.32 0.06 165);
+   125→   125→  --accent-foreground: oklch(0.95 0.02 165);
+   126→   126→  --destructive: oklch(0.704 0.191 22.216);
+   127→   127→  --border: oklch(1 0 0 / 10%);
+   128→   128→  --input: oklch(1 0 0 / 14%);
+   129→   129→  --ring: oklch(0.7 0.12 185);
+   130→   130→
+   131→   131→  --chart-1: oklch(0.7 0.14 188);
+   132→   132→  --chart-2: oklch(0.72 0.15 162);
+   133→   133→  --chart-3: oklch(0.75 0.17 84);
+   134→   134→  --chart-4: oklch(0.7 0.2 305);
+   135→   135→  --chart-5: oklch(0.72 0.22 16);
+   136→   136→
+   137→   137→  --sidebar: oklch(0.21 0.025 245);
+   138→   138→  --sidebar-foreground: oklch(0.97 0.006 185);
+   139→   139→  --sidebar-primary: oklch(0.7 0.12 185);
+   140→   140→  --sidebar-primary-foreground: oklch(0.16 0.022 245);
+   141→   141→  --sidebar-accent: oklch(0.32 0.06 165);
+   142→   142→  --sidebar-accent-foreground: oklch(0.95 0.02 165);
+   143→   143→  --sidebar-border: oklch(1 0 0 / 10%);
+   144→   144→  --sidebar-ring: oklch(0.7 0.12 185);
+   145→   145→
+   146→   146→  --brand: oklch(0.72 0.13 188);
+   147→   147→  --brand-foreground: oklch(0.16 0.022 245);
+   148→   148→  --brand-soft: oklch(0.28 0.06 175);
+   149→   149→  --brand-deep: oklch(0.85 0.08 195);
+   150→   150→  --growth: oklch(0.72 0.15 158);
+   151→   151→  --growth-foreground: oklch(0.16 0.022 245);
+   152→   152→  --ink: oklch(0.12 0.018 250);
+   153→   153→  --ink-foreground: oklch(0.97 0.006 185);
+   154→   154→  --ink-muted: oklch(0.62 0.02 200);
+   155→   155→  --ink-border: oklch(1 0 0 / 10%);
+   156→   156→}
+   157→   157→
+   158→   158→@layer base {
+   159→   159→  * {
+   160→   160→    @apply border-border outline-ring/50;
+   161→   161→  }
+   162→   162→  html {
+   163→   163→    scroll-behavior: smooth;
+   164→   164→    -webkit-font-smoothing: antialiased;
+   165→   165→    scroll-padding-top: 5rem;
+   166→   166→  }
+   167→   167→  body {
+   168→   168→    @apply bg-background text-foreground;
+   169→   169→    font-feature-settings: "ss01", "cv01", "cv03";
+   170→   170→  }
+   171→   171→  ::selection {
+   172→   172→    background: oklch(0.45 0.1 188 / 0.28);
+   173→   173→    color: inherit;
+   174→   174→  }
+   175→   175→  /* Visible keyboard focus everywhere — premium accessibility */
+   176→   176→  :where(a, button, [role="tab"], input, select, textarea, [tabindex]):focus-visible {
+   177→   177→    outline: 2px solid oklch(0.45 0.1 188);
+   178→   178→    outline-offset: 2px;
+   179→   179→    border-radius: 2px;
+   180→   180→  }
+   181→   181→  kbd {
+   182→   182→    @apply inline-flex items-center justify-center rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-semibold text-foreground;
+   183→   183→    line-height: 1;
+   184→   184→    box-shadow: 0 1px 0 0 oklch(0.18 0.03 245 / 0.06);
+   185→   185→  }
+   186→   186→  kbd kbd {
+   187→   187→    /* nested kbd chips inside hint chips — flatten shadow */
+   188→   188→    box-shadow: none;
+   189→   189→  }
+   190→   190→}
+   191→   191→
+   192→   192→@layer components {
+   193→   193→  /* Cinematic ink section (dark sections) */
+   194→   194→  .ink-section {
+   195→   195→    background: var(--ink);
+   196→   196→    color: var(--ink-foreground);
+   197→   197→  }
+   198→   198→  .ink-section .muted {
+   199→   199→    color: var(--ink-muted);
+   200→   200→  }
+   201→   201→
+   202→   202→  /* Premium container */
+   203→   203→  .container-px {
+   204→   204→    @apply px-5 sm:px-8 lg:px-12 xl:px-16;
+   205→   205→  }
+   206→   206→
+   207→   207→  /* Display type scale */
+   208→   208→  .display-1 {
+   209→   209→    @apply text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-semibold tracking-tight leading-[1.02];
+   210→   210→  }
+   211→   211→  .display-2 {
+   212→   212→    @apply text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-semibold tracking-tight leading-[1.05];
+   213→   213→  }
+   214→   214→  .display-3 {
+   215→   215→    @apply text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight leading-[1.1];
+   216→   216→  }
+   217→   217→  .eyebrow {
+   218→   218→    @apply text-xs sm:text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground;
+   219→   219→  }
+   220→   220→
+   221→   221→  /* Hairline gradient divider */
+   222→   222→  .hairline {
+   223→   223→    background: linear-gradient(
+   224→   224→      to right,
+   225→   225→      transparent,
+   226→   226→      oklch(0.45 0.1 188 / 0.35),
+   227→   227→      transparent
+   228→   228→    );
+   229→   229→    height: 1px;
+   230→   230→  }
+   231→   231→
+   232→   232→  /* Frosted glass card (product UI mock surfaces) */
+   233→   233→  .glass-card {
+   234→   234→    background: oklch(1 0 0 / 0.72);
+   235→   235→    backdrop-filter: blur(14px) saturate(140%);
+   236→   236→    border: 1px solid oklch(1 0 0 / 0.6);
+   237→   237→    box-shadow:
+   238→   238→      0 1px 0 0 oklch(1 0 0 / 0.5) inset,
+   239→   239→      0 24px 60px -28px oklch(0.2 0.05 195 / 0.35);
+   240→   240→  }
+   241→   241→  .dark .glass-card {
+   242→   242→    background: oklch(0.21 0.025 245 / 0.7);
+   243→   243→    border-color: oklch(1 0 0 / 0.08);
+   244→   244→  }
+   245→   245→
+   246→   246→  /* Subtle grain / vignette for cinematic sections */
+   247→   247→  .vignette::after {
+   248→   248→    content: "";
+   249→   249→    position: absolute;
+   250→   250→    inset: 0;
+   251→   251→    pointer-events: none;
+   252→   252→    background: radial-gradient(
+   253→   253→      120% 80% at 50% 0%,
+   254→   254→      transparent 40%,
+   255→   255→      oklch(0 0 0 / 0.35) 100%
+   256→   256→    );
+   257→   257→  }
+   258→   258→
+   259→   259→  /* Aurora glow blobs */
+   260→   260→  .aurora-blob {
+   261→   261→    position: absolute;
+   262→   262→    border-radius: 9999px;
+   263→   263→    filter: blur(80px);
+   264→   264→    opacity: 0.5;
+   265→   265→    pointer-events: none;
+   266→   266→    will-change: transform;
+   267→   267→  }
+   268→   268→
+   269→   269→  /* Marquee track */
+   270→   270→  .marquee-track {
+   271→   271→    display: flex;
+   272→   272→    width: max-content;
+   273→   273→    animation: marquee 40s linear infinite;
+   274→   274→  }
+   275→   275→  @keyframes marquee {
+   276→   276→    from { transform: translateX(0); }
+   277→   277→    to { transform: translateX(-50%); }
+   278→   278→  }
+   279→   279→
+   280→   280→  /* Pulse ring (queue token / live indicator) */
+   281→   281→  .pulse-ring {
+   282→   282→    position: relative;
+   283→   283→  }
+   284→   284→  .pulse-ring::before {
+   285→   285→    content: "";
+   286→   286→    position: absolute;
+   287→   287→    inset: 0;
+   288→   288→    border-radius: inherit;
+   289→   289→    box-shadow: 0 0 0 0 oklch(0.6 0.13 158 / 0.5);
+   290→   290→    animation: pulse-ring 2.2s cubic-bezier(0.4,0,0.6,1) infinite;
+   291→   291→  }
+   292→   292→  @keyframes pulse-ring {
+   293→   293→    0% { box-shadow: 0 0 0 0 oklch(0.6 0.13 158 / 0.5); }
+   294→   294→    70% { box-shadow: 0 0 0 14px oklch(0.6 0.13 158 / 0); }
+   295→   295→    100% { box-shadow: 0 0 0 0 oklch(0.6 0.13 158 / 0); }
+   296→   296→  }
+   297→   297→
+   298→   298→  /* Custom scrollbar for long lists */
+   299→   299→  .scroll-soft {
+   300→   300→    scrollbar-width: thin;
+   301→   301→    scrollbar-color: oklch(0.7 0.05 185 / 0.5) transparent;
+   302→   302→  }
+   303→   303→  .scroll-soft::-webkit-scrollbar {
+   304→   304→    width: 8px;
+   305→   305→    height: 8px;
+   306→   306→  }
+   307→   307→  .scroll-soft::-webkit-scrollbar-thumb {
+   308→   308→    background: oklch(0.7 0.05 185 / 0.45);
+   309→   309→    border-radius: 9999px;
+   310→   310→  }
+   311→   311→  .scroll-soft::-webkit-scrollbar-track {
+   312→   312→    background: transparent;
+   313→   313→  }
+   314→   314→
+   315→   315→  /* Gradient brand text */
+   316→   316→  .text-gradient {
+   317→   317→    background: linear-gradient(
+   318→   318→      90deg,
+   319→   319→      var(--brand),
+   320→   320→      var(--growth)
+   321→   321→    );
+   322→   322→    -webkit-background-clip: text;
+   323→   323→            background-clip: text;
+   324→   324→    color: transparent;
+   325→   325→  }
+   326→   326→
+   327→   327→  /* Premium card glow on hover */
+   328→   328→  .card-glow {
+   329→   329→    transition:
+   330→   330→      transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+   331→   331→      box-shadow 0.35s ease,
+   332→   332→      border-color 0.35s ease;
+   333→   333→  }
+   334→   334→  .card-glow:hover {
+   335→   335→    transform: translateY(-4px);
+   336→   336→    box-shadow:
+   337→   337→      0 1px 0 0 oklch(1 0 0 / 0.5) inset,
+   338→   338→      0 30px 70px -32px oklch(0.3 0.1 188 / 0.4);
+   339→   339→  }
+   340→   340→
+   341→   341→  /* Skeleton shimmer for product UI placeholders */
+   342→   342→  .shimmer {
+   343→   343→    background: linear-gradient(
+   344→   344→      90deg,
+   345→   345→      oklch(0.92 0.01 185 / 0.6) 25%,
+   346→   346→      oklch(0.96 0.005 185 / 0.9) 37%,
+   347→   347→      oklch(0.92 0.01 185 / 0.6) 63%
+   348→   348→    );
+   349→   349→    background-size: 400% 100%;
+   350→   350→    animation: shimmer 1.6s ease infinite;
+   351→   351→  }
+   352→   352→  @keyframes shimmer {
+   353→   353→    0% { background-position: 100% 0; }
+   354→   354→    100% { background-position: -100% 0; }
+   355→   355→  }
+   356→   356→
+   357→   357→  /* Caret blink for typed AI text */
+   358→   358→  .caret::after {
+   359→   359→    content: "▋";
+   360→   360→    margin-left: 1px;
+   361→   361→    animation: caret 1.05s steps(1) infinite;
+   362→   362→    color: oklch(0.55 0.12 188);
+   363→   363→  }
+   364→   364→  @keyframes caret {
+   365→   365→    50% { opacity: 0; }
+   366→   366→  }
+   367→   367→
+   368→   368→  /* Reduced motion: reveal everything, kill decorative loops */
+   369→   369→  @media (prefers-reduced-motion: reduce) {
+   370→   370→    *, *::before, *::after {
+   371→   371→      animation-duration: 0.001ms !important;
+   372→   372→      animation-iteration-count: 1 !important;
+   373→   373→      transition-duration: 0.001ms !important;
+   374→   374→      scroll-behavior: auto !important;
+   375→   375→    }
+   376→   376→    .marquee-track { animation: none !important; }
+   377→   377→    .pulse-ring::before { animation: none !important; }
+   378→   378→    .caret::after { animation: none !important; }
+   379→   379→    .shimmer { animation: none !important; }
+   380→   380→    [data-anim] { opacity: 1 !important; transform: none !important; }
+   381→   381→    [data-hero-step], [data-hero-ui], [data-hero-ai] { opacity: 1 !important; transform: none !important; }
+   382→   382→  }
+   383→   383→
+   384→   384→  /*
+   385→   385→   * FOUC safety net for the hero entrance choreography.
+   386→   386→   *
+   387→   387→   * The hero uses GSAP `.from()` tweens which set opacity:0 + y-offset as
+   388→   388→   * the *starting* state and animate back to the natural state. With
+   389→   389→   * useLayoutEffect, GSAP applies that start state before the browser
+   390→   390→   * paints, so the user should never see the SSR markup flash visibly.
+   391→   391→   *
+   392→   392→   * However, in the gap between SSR HTML arriving and React hydrating,
+   393→   393→   * the server-rendered markup is visible. This rule pre-hides the hero
+   394→   394→   * choreography targets whenever JS is enabled (html.js is set by the
+   395→   395→   * inline script in <head>) so the SSR markup cannot flash. If JS is
+   396→   396→   * disabled or fails to load, html.js is never added and the content
+   397→   397→   * stays visible (good for SEO / no-JS accessibility).
+   398→   398→   *
+   399→   399→   * GSAP overrides these inline as soon as its `from()` tween runs.
+   400→   400→   */
+   401→   401→  html.js [data-hero-step],
+   402→   402→  html.js [data-hero-ui],
+   403→   403→  html.js [data-hero-ai] {
+   404→   404→    opacity: 0;
+   405→   405→  }
+   406→   406→}
+   407→   407→
+   408→   408→@layer utilities {
+   409→   409→  .text-balance { text-wrap: balance; }
+   410→   410→  .text-pretty { text-wrap: pretty; }
+   411→   411→  .tabular-nums {
+   412→   412→    font-variant-numeric: tabular-nums;
+   413→   413→    font-feature-settings: "tnum" 1, "ss01" 1;
+   414→   414→  }
+   415→   415→
+   416→   416→  .bg-grid {
+   417→   417→    background-image:
+   418→   418→      linear-gradient(to right, oklch(0.7 0.04 185 / 0.10) 1px, transparent 1px),
+   419→   419→      linear-gradient(to bottom, oklch(0.7 0.04 185 / 0.10) 1px, transparent 1px);
+   420→   420→    background-size: 56px 56px;
+   421→   421→  }
+   422→   422→  .bg-grid-ink {
+   423→   423→    background-image:
+   424→   424→      linear-gradient(to right, oklch(1 0 0 / 0.06) 1px, transparent 1px),
+   425→   425→      linear-gradient(to bottom, oklch(1 0 0 / 0.06) 1px, transparent 1px);
+   426→   426→    background-size: 56px 56px;
+   427→   427→  }
+   428→   428→
+   429→   429→  .mask-fade-r {
+   430→   430→    -webkit-mask-image: linear-gradient(to right, black 70%, transparent 100%);
+   431→   431→            mask-image: linear-gradient(to right, black 70%, transparent 100%);
+   432→   432→  }
+   433→   433→  .mask-fade-b {
+   434→   434→    -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+   435→   435→            mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+   436→   436→  }
+   437→   437→
+   438→   438→  /* Subtle inner top hairline for premium dark surfaces */
+   439→   439→  .edge-top-highlight {
+   440→   440→    position: relative;
+   441→   441→  }
+   442→   442→  .edge-top-highlight::before {
+   443→   443→    content: "";
+   444→   444→    position: absolute;
+   445→   445→    inset: 0 0 auto 0;
+   446→   446→    height: 1px;
+   447→   447→    background: linear-gradient(
+   448→   448→      to right,
+   449→   449→      transparent,
+   450→   450→      oklch(1 0 0 / 0.18),
+   451→   451→      transparent
+   452→   452→    );
+   453→   453→    pointer-events: none;
+   454→   454→    border-radius: inherit;
+   455→   455→  }
+   456→   456→}
+   457→   457→
+   458→   458→/* Outside @layer — Tailwind v4 reliably emits plain rules in the
+   459→   459→   final bundle (custom utilities that the content scanner can't
+   460→   460→   detect). Reduced-motion is handled by the global block above. */
+   461→   461→
+   462→   462→/* Per-section scroll anchor margin so jump-to-chapter links land
+   463→   463→   below the sticky header (paired with html.scroll-padding-top). */
+   464→   464→.scroll-anchor {
+   465→   465→  scroll-margin-top: 5rem;
+   466→   466→}
+   467→   467→
+   468→   468→/* Hero headline gradient sweep — a slow horizontal sheen across
+   469→   469→   the brand→growth gradient. */
+   470→   470→.headline-sweep {
+   471→   471→  background-size: 200% 100%;
+   472→   472→  background-position: 0% 0;
+   473→   473→  animation: doctorooms-headline-sweep 8s ease-in-out infinite;
+   474→   474→}
+   475→   475→@keyframes doctorooms-headline-sweep {
+   476→   476→  0%, 100% { background-position: 0% 0; }
+   477→   477→  50% { background-position: 100% 0; }
+   478→   478→}
+   479→   479→
+   480→   480→/* Card lift-on-hover affordance — subtle translateY + border
+   481→   481→   shift. Used on premium cards (hero stat cards, trust points,
+   482→   482→   hospital modules). */
+   483→   483→.lift-on-hover {
+   484→   484→  transition:
+   485→   485→    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+   486→   486→    border-color 0.25s ease,
+   487→   487→    box-shadow 0.25s ease;
+   488→   488→}
+   489→   489→.lift-on-hover:hover {
+   490→   490→  transform: translateY(-2px);
+   491→   491→}
+   492→   492→
+   493→   493→/* Sheen-on-hover — a diagonal light sheen that sweeps across the
+   494→   494→   element on hover. Used on the most premium CTAs. */
+   495→   495→.sheen {
+   496→   496→  position: relative;
+   497→   497→  overflow: hidden;
+   498→   498→}
+   499→   499→.sheen::after {
+   500→   500→  content: "";
+   501→   501→  position: absolute;
+   502→   502→  inset: 0;
+   503→   503→  background: linear-gradient(
+   504→   504→    120deg,
+   505→   505→    transparent 30%,
+   506→   506→    oklch(1 0 0 / 0.12) 50%,
+   507→   507→    transparent 70%
+   508→   508→  );
+   509→   509→  transform: translateX(-100%);
+   510→   510→  transition: transform 0.6s ease;
+   511→   511→  pointer-events: none;
+   512→   512→}
+   513→   513→.sheen:hover::after {
+   514→   514→  transform: translateX(100%);
+   515→   515→}
+   516→   516→
+   517→   517→/* Glow-ring — a soft outer halo for premium badges / icon tiles /
+   518→   518→   highlighted cards. Uses box-shadow so it can stack with other
+   519→   519→   shadows without layout impact. */
+   520→   520→.glow-ring {
+   521→   521→  box-shadow:
+   522→   522→    0 0 0 1px oklch(0.55 0.12 188 / 0.20),
+   523→   523→    0 0 22px -4px oklch(0.55 0.12 188 / 0.35);
+   524→   524→}
+   525→   525→.glow-ring-growth {
+   526→   526→  box-shadow:
+   527→   527→    0 0 0 1px oklch(0.65 0.14 165 / 0.20),
+   528→   528→    0 0 22px -4px oklch(0.65 0.14 165 / 0.35);
+   529→   529→}
+   530→   530→
+   531→   531→/* Divider-gradient — a thin horizontal hairline that fades from
+   532→   532→   transparent → brand → growth → transparent. Used as a section
+   533→   533→   separator inside dark "ink-section" chapters. */
+   534→   534→.divider-gradient {
+   535→   535→  height: 1px;
+   536→   536→  background: linear-gradient(
+   537→   537→    to right,
+   538→   538→    transparent 0%,
+   539→   539→    oklch(0.55 0.12 188 / 0.45) 35%,
+   540→   540→    oklch(0.65 0.14 165 / 0.55) 65%,
+   541→   541→    transparent 100%
+   542→   542→  );
+   543→   543→  border: 0;
+   544→   544→}
+   545→   545→
+   546→   546→/* Inline glossary term chip — a small affordance that distinguishes
+   547→   547→   the look-up-able terms from regular links. Dotted underline +
+   548→   548→   subtle brand tint on hover. */
+   549→   549→.glossary-term {
+   550→   550→  cursor: help;
+   551→   551→}
+   552→   552→
+   553→   553→/* Vertical variant of divider-gradient — used as a section separator
+   554→   554→   between adjacent columns or as a left/right accent on premium cards. */
+   555→   555→.divider-gradient-vertical {
+   556→   556→  width: 1px;
+   557→   557→  background: linear-gradient(
+   558→   558→    to bottom,
+   559→   559→    transparent 0%,
+   560→   560→    oklch(0.55 0.12 188 / 0.45) 35%,
+   561→   561→    oklch(0.65 0.14 165 / 0.55) 65%,
+   562→   562→    transparent 100%
+   563→   563→  );
+   564→   564→  border: 0;
+   565→   565→}
+   566→   566→
+   567→   567→/* Dot-pulse loader — three dots that pulse in a staggered rhythm. Used
+   568→   568→   by lazy-mount skeletons during chunk fetch. Reduced-motion safe (the
+   569→   569→   global block above flattens the animation). */
+   570→   570→.dot-pulse {
+   571→   571→  display: inline-flex;
+   572→   572→  align-items: center;
+   573→   573→  gap: 0.25rem;
+   574→   574→}
+   575→   575→.dot-pulse > span {
+   576→   576→  display: block;
+   577→   577→  width: 6px;
+   578→   578→  height: 6px;
+   579→   579→  border-radius: 9999px;
+   580→   580→  background: oklch(0.55 0.12 188 / 0.7);
+   581→   581→  animation: dot-pulse 1.2s ease-in-out infinite;
+   582→   582→}
+   583→   583→.dot-pulse > span:nth-child(2) { animation-delay: 0.15s; }
+   584→   584→.dot-pulse > span:nth-child(3) { animation-delay: 0.3s; }
+   585→   585→@keyframes dot-pulse {
+   586→   586→  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+   587→   587→  40% { transform: scale(1); opacity: 1; }
+   588→   588→}
+   589→   589→
+   590→   590→/* Card-aurora — a slow ambient gradient drift behind premium cards.
+   591→   591→   Used on the outcomes featured quote + ROI output panel.
+   592→   592→   Reduced-motion: animation disabled globally. */
+   593→   593→.card-aurora {
+   594→   594→  position: relative;
+   595→   595→  overflow: hidden;
+   596→   596→}
+   597→   597→.card-aurora::before {
+   598→   598→  content: "";
+   599→   599→  position: absolute;
+   600→   600→  inset: -40%;
+   601→   601→  pointer-events: none;
+   602→   602→  background:
+   603→   603→    radial-gradient(40% 40% at 20% 30%, oklch(0.55 0.12 188 / 0.10), transparent 60%),
+   604→   604→    radial-gradient(40% 40% at 80% 70%, oklch(0.65 0.14 165 / 0.10), transparent 60%);
+   605→   605→  animation: card-aurora-drift 16s ease-in-out infinite alternate;
+   606→   606→  z-index: 0;
+   607→   607→}
+   608→   608→.card-aurora > * {
+   609→   609→  position: relative;
+   610→   610→  z-index: 1;
+   611→   611→}
+   612→   612→@keyframes card-aurora-drift {
+   613→   613→  0% { transform: translate(0, 0) rotate(0deg); }
+   614→   614→  100% { transform: translate(8%, 4%) rotate(2deg); }
+   615→   615→}
+   616→   616→
+   617→   617→/* Outcomes quote fade-in — runs when the active quote changes (keyed
+   618→   618→   by `featured.key` in the React tree so the element remounts). */
+   619→   619→@keyframes outcomes-quote-fade {
+   620→   620→  0% { opacity: 0; transform: translateY(4px); }
+   621→   621→  100% { opacity: 1; transform: translateY(0); }
+   622→   622→}
+   623→   623→
+   624→   624→/* === Round 19 additions — premium micro-affordances + visual rhythm === */
+   625→   625→
+   626→   626→/* Spotlight-glow — a soft radial brand/growth wash that follows the
+   627→   627→   pointer position over interactive surfaces. Applied to premium cards
+   628→   628→   via the `:hover` pseudo-class so it fades in only when the user
+   629→   629→   intends to engage. Reduced-motion safe (CSS opacity transition only,
+   630→   630→   no movement). */
+   631→   631→.spotlight-glow {
+   632→   632→  position: relative;
+   633→   633→  isolation: isolate;
+   634→   634→}
+   635→   635→.spotlight-glow::before {
+   636→   636→  content: "";
+   637→   637→  position: absolute;
+   638→   638→  inset: 0;
+   639→   639→  pointer-events: none;
+   640→   640→  border-radius: inherit;
+   641→   641→  opacity: 0;
+   642→   642→  background:
+   643→   643→    radial-gradient(
+   644→   644→      220px circle at var(--x, 50%) var(--y, 50%),
+   645→   645→      oklch(0.55 0.12 188 / 0.16),
+   646→   646→      transparent 65%
+   647→   647→    );
+   648→   648→  transition: opacity 240ms ease-out;
+   649→   649→  z-index: 0;
+   650→   650→}
+   651→   651→.spotlight-glow:hover::before,
+   652→   652→.spotlight-glow:focus-visible::before {
+   653→   653→  opacity: 1;
+   654→   654→}
+   655→   655→.spotlight-glow > * {
+   656→   656→  position: relative;
+   657→   657→  z-index: 1;
+   658→   658→}
+   659→   659→
+   660→   660→/* Ribbon-stripe — a 2px horizontal accent strip with a brand→growth
+   661→   661→   diagonal sweep. Used at the top of premium chapter headers + ROI
+   662→   662→   output to signal "verified / authenticated / connected" sections. */
+   663→   663→.ribbon-stripe {
+   664→   664→  height: 2px;
+   665→   665→  background: linear-gradient(
+   666→   666→    90deg,
+   667→   667→    oklch(0.55 0.12 188 / 0.9) 0%,
+   668→   668→    oklch(0.65 0.14 165 / 0.9) 50%,
+   669→   669→    oklch(0.55 0.12 188 / 0.0) 100%
+   670→   670→  );
+   671→   671→  border: 0;
+   672→   672→}
+   673→   673→
+   674→   674→/* Ticker-quote — vertical bars that scroll to the right inside a
+   675→   675→   contained rail. Used on the outcomes carousel eyebrow row as a
+   676→   676→   subtle "live data" affordance. Reduced-motion: animation disabled
+   677→   677→   globally. */
+   678→   678→.ticker-quote {
+   679→   679→  position: relative;
+   680→   680→  overflow: hidden;
+   681→   681→  display: inline-flex;
+   682→   682→  align-items: center;
+   683→   683→  gap: 0.5rem;
+   684→   684→}
+   685→   685→.ticker-quote::after {
+   686→   686→  content: "";
+   687→   687→  position: absolute;
+   688→   688→  inset: 0;
+   689→   689→  pointer-events: none;
+   690→   690→  background: linear-gradient(
+   691→   691→    90deg,
+   692→   692→    transparent,
+   693→   693→    transparent 70%,
+   694→   694→    oklch(1 0 0 / 0.7) 100%
+   695→   695→  );
+   696→   696→}
+   697→   697→.ticker-quote > span {
+   698→   698→  display: inline-flex;
+   699→   699→  align-items: center;
+   700→   700→  gap: 0.25rem;
+   701→   701→  padding-right: 2rem;
+   702→   702→  animation: ticker-quote-scroll 9s linear infinite;
+   703→   703→}
+   704→   704→@keyframes ticker-quote-scroll {
+   705→   705→  0% { transform: translateX(0); }
+   706→   706→  100% { transform: translateX(-50%); }
+   707→   707→}
+   708→   708→
+   709→   709→/* Kbd-chip — a refined keyboard shortcut chip with a subtle inner
+   710→   710→   shadow + bottom highlight. Replaces the default browser-rendered
+   711→   711→   <kbd> look so shortcut hints feel consistent across platforms. */
+   712→   712→.kbd-chip {
+   713→   713→  display: inline-flex;
+   714→   714→  align-items: center;
+   715→   715→  justify-content: center;
+   716→   716→  min-width: 1.5rem;
+   717→   717→  height: 1.5rem;
+   718→   718→  padding: 0 0.4rem;
+   719→   719→  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+   720→   720→  font-size: 0.7rem;
+   721→   721→  font-weight: 600;
+   722→   722→  color: oklch(0.4 0 0 / 0.85);
+   723→   723→  background: oklch(0.96 0.005 240);
+   724→   724→  border: 1px solid oklch(0.85 0.02 240);
+   725→   725→  border-bottom: 2px solid oklch(0.78 0.02 240);
+   726→   726→  border-radius: 0.375rem;
+   727→   727→  box-shadow:
+   728→   728→    inset 0 1px 0 oklch(1 0 0 / 0.6),
+   729→   729→    0 1px 0 oklch(0 0 0 / 0.04);
+   730→   730→  user-select: none;
+   731→   731→}
+   732→   732→
+   733→   733→/* Marker-tick — a small ✓-style dot rendered as a CSS-only marker for
+   734→   734→   checklists. Used inside the ROI drivers list + comparison rows to
+   735→   735→   replace the generic `•` bullet with a premium brand-tinted tick. */
+   736→   736→.marker-tick {
+   737→   737→  display: inline-flex;
+   738→   738→  align-items: center;
+   739→   739→  justify-content: center;
+   740→   740→  width: 1rem;
+   741→   741→  height: 1rem;
+   742→   742→  margin-right: 0.5rem;
+   743→   743→  flex-shrink: 0;
+   744→   744→  border-radius: 9999px;
+   745→   745→  background: oklch(0.55 0.12 188 / 0.14);
+   746→   746→  color: oklch(0.55 0.12 188);
+   747→   747→  font-size: 0.7rem;
+   748→   748→  line-height: 1;
+   749→   749→  font-weight: 800;
+   750→   750→}
+   751→   751→.marker-tick.growth {
+   752→   752→  background: oklch(0.65 0.14 165 / 0.16);
+   753→   753→  color: oklch(0.65 0.14 165);
+   754→   754→}
+   755→   755→.marker-tick::before {
+   756→   756→  content: "✓";
+   757→   757→}
+   758→   758→
+   759→   759→/* Quote-arc — a decorative quotation mark arc rendered as a thin SVG
+   760→   760→   underline beneath the featured blockquote. Pure CSS gradient mask
+   761→   761→   so it scales with container width without needing an <svg> element. */
+   762→   762→.quote-arc {
+   763→   763→  height: 3px;
+   764→   764→  width: 64px;
+   765→   765→  border-radius: 9999px;
+   766→   766→  background: linear-gradient(
+   767→   767→    90deg,
+   768→   768→    oklch(0.55 0.12 188 / 0.7),
+   769→   769→    oklch(0.65 0.14 165 / 0.7) 60%,
+   770→   770→    transparent
+   771→   771→  );
+   772→   772→}
+   773→   773→
+   774→   774→/* Hero-stripes — subtle diagonal background pattern for the hero chapter.
+   775→   775→   Layered above the radial brand/growth wash to add visual texture
+   776→   776→   without competing with the headline. */
+   777→   777→.hero-stripes {
+   778→   778→  background-image:
+   779→   779→    repeating-linear-gradient(
+   780→   780→      115deg,
+   781→   781→      transparent,
+   782→   782→      transparent 80px,
+   783→   783→      oklch(0.55 0.12 188 / 0.025) 80px,
+   784→   784→      oklch(0.55 0.12 188 / 0.025) 81px
+   785→   785→    );
+   786→   786→  background-position: center;
+   787→   787→}
+   788→   788→
+   789→   789→/* Focus-ring-tab — keyboard-only focus indicator for tabs/pagination
+   790→   790→   dots that are normally flat. Uses a subtle outline + offset so
+   791→   791→   keyboard users see clear focus without affecting mouse users. */
+   792→   792→.focus-ring-tab:focus-visible {
+   793→   793→  outline: 2px solid oklch(0.55 0.12 188);
+   794→   794→  outline-offset: 4px;
+   795→   795→  border-radius: 9999px;
+   796→   796→}
+   797→   797→
+   798→   798→/* Live-indicator-dot — a small pulsing dot that signals "live"/"active"
+   799→   799→   state. Used on the ROI live indicator + admin overlay live badge.
+   800→   800→   Reduced-motion: pulse disabled globally. */
+   801→   801→.live-indicator-dot {
+   802→   802→  display: inline-block;
+   803→   803→  width: 6px;
+   804→   804→  height: 6px;
+   805→   805→  border-radius: 9999px;
+   806→   806→  background: oklch(0.65 0.14 165);
+   807→   807→  box-shadow: 0 0 0 0 oklch(0.65 0.14 165 / 0.6);
+   808→   808→  animation: live-indicator-pulse 2s ease-out infinite;
+   809→   809→}
+   810→   810→@keyframes live-indicator-pulse {
+   811→   811→  0% { box-shadow: 0 0 0 0 oklch(0.65 0.14 165 / 0.6); }
+   812→   812→  70% { box-shadow: 0 0 0 8px oklch(0.65 0.14 165 / 0); }
+   813→   813→  100% { box-shadow: 0 0 0 0 oklch(0.65 0.14 165 / 0); }
+   814→   814→}
+   815→   815→
+   816→   816→/* Tailwind v4 force-recompile marker (round 19) — content shift triggers a full
+   817→   817→   Lightning CSS re-emit so the utility rules above reliably appear in
+   818→   818→   the production bundle (works around Turbopack's incremental cache). */
+   819→   819→
+   820→   820→
+   821→   821→/* === Round 20 additions — premium accent utilities + reading flourishes === */
+   822→   822→
+   823→   823→/* Chip-dual-tone — a chip with a brand→growth gradient border-image so the
+   824→   824→   border itself is a subtle brand→growth fade. Useful for "dual-coded"
+   825→   825→   affordances (where two ideas converge: brand + growth, clinical +
+   826→   826→   operational). Pairs with the existing marker-tick. */
+   827→   827→.chip-dual-tone {
+   828→   828→  position: relative;
+   829→   829→  border: 1px solid transparent;
+   830→   830→  border-image: linear-gradient(90deg, oklch(0.55 0.12 188 / 0.6), oklch(0.65 0.14 165 / 0.6)) 1;
+   831→   831→  background:
+   832→   832→    linear-gradient(oklch(1 0 0), oklch(1 0 0)) padding-box,
+   833→   833→    linear-gradient(90deg, oklch(0.55 0.12 188 / 0.6), oklch(0.65 0.14 165 / 0.6)) border-box;
+   834→   834→}
+   835→   835→.dark .chip-dual-tone {
+   836→   836→  background:
+   837→   837→    linear-gradient(oklch(0.21 0.025 245), oklch(0.21 0.025 245)) padding-box,
+   838→   838→    linear-gradient(90deg, oklch(0.55 0.12 188 / 0.6), oklch(0.65 0.14 165 / 0.6)) border-box;
+   839→   839→}
+   840→   840→
+   841→   841→/* Reading-rhythm — drop-cap + comfortable measure for premium body copy.
+   842→   842→   Used on outcome-card featured paragraphs + the security chapter
+   843→   843→   disclaimer so the reader perceives editorial care, not marketing fluff. */
+   844→   844→.reading-rhythm {
+   845→   845→  text-wrap: pretty;
+   846→   846→  line-height: 1.7;
+   847→   847→  max-width: 68ch;
+   848→   848→}
+   849→   849→.reading-rhythm::first-letter {
+   850→   850→  font-size: 3.2em;
+   851→   851→  font-weight: 700;
+   852→   852→  line-height: 0.85;
+   853→   853→  margin-right: 0.08em;
+   854→   854→  margin-top: 0.04em;
+   855→   855→  float: left;
+   856→   856→  background: linear-gradient(135deg, oklch(0.45 0.1 188), oklch(0.6 0.13 158));
+   857→   857→  -webkit-background-clip: text;
+   858→   858→          background-clip: text;
+   859→   859→  color: transparent;
+   860→   860→}
+   861→   861→
+   862→   862→/* Ascend-bar — animated step bars showing progress through a journey.
+   863→   863→   Renders N segments, fills them sequentially via the `--step` CSS var.
+   864→   864→   Used by rollout-timeline + patient-journey for "stage of progress". */
+   865→   865→.ascend-bar {
+   866→   866→  display: flex;
+   867→   867→  gap: 3px;
+   868→   868→  width: 100%;
+   869→   869→}
+   870→   870→.ascend-bar > span {
+   871→   871→  flex: 1;
+   872→   872→  height: 4px;
+   873→   873→  border-radius: 9999px;
+   874→   874→  background: oklch(0.85 0.02 185 / 0.6);
+   875→   875→  position: relative;
+   876→   876→  overflow: hidden;
+   877→   877→}
+   878→   878→.ascend-bar > span::after {
+   879→   879→  content: "";
+   880→   880→  position: absolute;
+   881→   881→  inset: 0;
+   882→   882→  background: linear-gradient(90deg, oklch(0.55 0.12 188), oklch(0.65 0.14 165));
+   883→   883→  transform: scaleX(0);
+   884→   884→  transform-origin: left;
+   885→   885→  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+   886→   886→}
+   887→   887→.ascend-bar > span[data-active="true"]::after,
+   888→   888→.ascend-bar > span[data-done="true"]::after {
+   889→   889→  transform: scaleX(1);
+   890→   890→}
+   891→   891→.ascend-bar > span[data-done="true"]::after {
+   892→   892→  background: linear-gradient(90deg, oklch(0.6 0.13 158), oklch(0.65 0.14 165));
+   893→   893→}
+   894→   894→
+   895→   895→/* Tape-edge — a decorative torn-tape edge for callouts / sticky-note
+   896→   896→   surfaces. Pairs with the security disclaimer + admin overlay tip boxes
+   897→   897→   to give a "team-stickies" feel without being silly. */
+   898→   898→.tape-edge {
+   899→   899→  position: relative;
+   900→   900→}
+   901→   901→.tape-edge::before {
+   902→   902→  content: "";
+   903→   903→  position: absolute;
+   904→   904→  top: -8px;
+   905→   905→  left: 50%;
+   906→   906→  width: 64px;
+   907→   907→  height: 18px;
+   908→   908→  transform: translateX(-50%) rotate(-2deg);
+   909→   909→  background:
+   910→   910→    linear-gradient(90deg,
+   911→   911→      oklch(0.55 0.12 188 / 0.18) 0%,
+   912→   912→      oklch(0.55 0.12 188 / 0.28) 50%,
+   913→   913→      oklch(0.55 0.12 188 / 0.18) 100%
+   914→   914→    );
+   915→   915→  border-left: 1px dashed oklch(0.55 0.12 188 / 0.4);
+   916→   916→  border-right: 1px dashed oklch(0.55 0.12 188 / 0.4);
+   917→   917→  border-radius: 2px;
+   918→   918→  pointer-events: none;
+   919→   919→  z-index: 1;
+   920→   920→}
+   921→   921→
+   922→   922→/* Scan-line — subtle scanline overlay for "live feed" / product surfaces.
+   923→   923→   Adds the faint horizontal-line texture CRT monitors used to have. Pairs
+   924→   924→   with the Queue chapter's live board + the AI agent's response panel. */
+   925→   925→.scan-line {
+   926→   926→  position: relative;
+   927→   927→}
+   928→   928→.scan-line::after {
+   929→   929→  content: "";
+   930→   930→  position: absolute;
+   931→   931→  inset: 0;
+   932→   932→  pointer-events: none;
+   933→   933→  background-image: repeating-linear-gradient(
+   934→   934→    0deg,
+   935→   935→    oklch(1 0 0 / 0.04) 0px,
+   936→   936→    oklch(1 0 0 / 0.04) 1px,
+   937→   937→    transparent 1px,
+   938→   938→    transparent 3px
+   939→   939→  );
+   940→   940→  border-radius: inherit;
+   941→   941→  mix-blend-mode: overlay;
+   942→   942→}
+   943→   943→.dark .scan-line::after {
+   944→   944→  background-image: repeating-linear-gradient(
+   945→   945→    0deg,
+   946→   946→    oklch(1 0 0 / 0.05) 0px,
+   947→   947→    oklch(1 0 0 / 0.05) 1px,
+   948→   948→    transparent 1px,
+   949→   949→    transparent 3px
+   950→   950→  );
+   951→   951→}
+   952→   952→
+   953→   953→/* Footnote-marker — a superscript brand-colored marker that links an
+   954→   954→   inline claim to a footnote / disclaimer line. Used in the ROI calculator
+   955→   955→   inputs + comparison table cells. */
+   956→   956→.footnote-marker {
+   957→   957→  font-size: 0.65em;
+   958→   958→  vertical-align: super;
+   959→   959→  color: oklch(0.55 0.12 188);
+   960→   960→  font-weight: 700;
+   961→   961→  margin-left: 0.1em;
+   962→   962→  line-height: 0;
+   963→   963→  user-select: none;
+   964→   964→}
+   965→   965→
+   966→   966→/* Tailwind v4 force-recompile marker (round 20) — content shift triggers a
+   967→   967→   fresh Lightning CSS re-emit so the new utility rules above reliably
+   968→   968→   appear in the production bundle (works around Turbopack's incremental cache). */
+   969→   969→
+   970→   970→

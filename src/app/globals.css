@@ -378,6 +378,30 @@
     .caret::after { animation: none !important; }
     .shimmer { animation: none !important; }
     [data-anim] { opacity: 1 !important; transform: none !important; }
+    [data-hero-step], [data-hero-ui], [data-hero-ai] { opacity: 1 !important; transform: none !important; }
+  }
+
+  /*
+   * FOUC safety net for the hero entrance choreography.
+   *
+   * The hero uses GSAP `.from()` tweens which set opacity:0 + y-offset as
+   * the *starting* state and animate back to the natural state. With
+   * useLayoutEffect, GSAP applies that start state before the browser
+   * paints, so the user should never see the SSR markup flash visibly.
+   *
+   * However, in the gap between SSR HTML arriving and React hydrating,
+   * the server-rendered markup is visible. This rule pre-hides the hero
+   * choreography targets whenever JS is enabled (html.js is set by the
+   * inline script in <head>) so the SSR markup cannot flash. If JS is
+   * disabled or fails to load, html.js is never added and the content
+   * stays visible (good for SEO / no-JS accessibility).
+   *
+   * GSAP overrides these inline as soon as its `from()` tween runs.
+   */
+  html.js [data-hero-step],
+  html.js [data-hero-ui],
+  html.js [data-hero-ai] {
+    opacity: 0;
   }
 }
 
