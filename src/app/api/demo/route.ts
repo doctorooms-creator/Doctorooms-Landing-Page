@@ -126,27 +126,54 @@ export async function PATCH(req: Request) {
       );
     }
 
-    const rawStatus = (body as Record<string, unknown>).status;
-    if (!isDemoStatus(rawStatus)) {
+    const bodyObj = body as Record<string, unknown>;
+    const rawStatus = bodyObj.status;
+    const rawNote = bodyObj.note;
+
+    // PATCH supports either { status } or { note }. Either or both may be
+    // present in a single call.
+    const data: { status?: DemoStatus; note?: string } = {};
+    if (rawStatus !== undefined) {
+      if (!isDemoStatus(rawStatus)) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: `Invalid status. Allowed: ${DEMO_STATUSES.join(", ")}`,
+          },
+          { status: 400 }
+        );
+      }
+      data.status = rawStatus;
+    }
+    if (rawNote !== undefined) {
+      if (typeof rawNote !== "string") {
+        return NextResponse.json(
+          { ok: false, error: "note must be a string" },
+          { status: 400 }
+        );
+      }
+      // Empty string clears the note; otherwise trim + cap.
+      data.note = rawNote.trim().slice(0, 2000) || null;
+    }
+    if (Object.keys(data).length === 0) {
       return NextResponse.json(
-        {
-          ok: false,
-          error: `Invalid status. Allowed: ${DEMO_STATUSES.join(", ")}`,
-        },
+        { ok: false, error: "No updatable fields (status, note) provided" },
         { status: 400 }
       );
     }
 
     const updated = await db.demoRequest.update({
       where: { id: String(id).slice(0, 64) },
-      data: { status: rawStatus },
+      data,
       select: {
         id: true,
         name: true,
         email: true,
+        phone: true,
         org: true,
         orgType: true,
         size: true,
+        note: true,
         source: true,
         status: true,
         createdAt: true,
@@ -156,6 +183,51 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ ok: true, row: updated });
   } catch (e) {
     console.error("[demo-request] update error:", e);
+    return NextResponse.json(
+      { ok: false, error: "Server error" },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE /api/demo?id=<cuid> — hard-delete a single row. Used by the
+// admin overlay for batch / individual removal of stale or test rows.
+export async function DELETE(req: Request) {
+  try {
+    const url = new URL(req.url);
+    const id = url.searchParams.get("id");
+    const idsParam = url.searchParams.get("ids");
+
+    // Batch delete via ?ids=id1,id2,id3
+    if (idsParam) {
+      const ids = idsParam
+        .split(",")
+        .map((s) => s.trim().slice(0, 64))
+        .filter(Boolean);
+      if (ids.length === 0) {
+        return NextResponse.json(
+          { ok: false, error: "No ids provided" },
+          { status: 400 }
+        );
+      }
+      const result = await db.demoRequest.deleteMany({
+        where: { id: { in: ids } },
+      });
+      return NextResponse.json({ ok: true, deleted: result.count });
+    }
+
+    if (!id) {
+      return NextResponse.json(
+        { ok: false, error: "Missing id" },
+        { status: 400 }
+      );
+    }
+    await db.demoRequest.delete({
+      where: { id: String(id).slice(0, 64) },
+    });
+    return NextResponse.json({ ok: true, deleted: 1 });
+  } catch (e) {
+    console.error("[demo-request] delete error:", e);
     return NextResponse.json(
       { ok: false, error: "Server error" },
       { status: 500 }

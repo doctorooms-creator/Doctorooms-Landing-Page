@@ -281,9 +281,180 @@ export const FAQ_ITEMS = [
 export const KEYBOARD_SHORTCUTS = [
   { keys: ["B"], label: "Open the Book-a-Demo dialog", desc: "Skip to the conversion form from anywhere." },
   { keys: ["?"], label: "Open this keyboard shortcuts panel", desc: "You are here." },
+  { keys: ["G"], label: "Open the healthcare glossary", desc: "Plain-English definitions for OPD, IPD, EMR and more." },
   { keys: ["Esc"], label: "Close any open dialog", desc: "Dismiss overlays and restore focus." },
   { keys: ["T"], label: "Scroll back to the top", desc: "Jump to the hero of the page." },
   { keys: ["Shift", "A"], label: "Open the team admin panel", desc: "Review inbound demo requests + triage status." },
+] as const;
+
+/**
+ * Healthcare glossary — plain-English definitions for the operational and
+ * clinical terms used throughout the page. Aimed at non-clinical decision
+ * makers (admins, investors, journalists, founders) who shouldn't have to
+ * guess what an acronym means. No invented definitions; these are
+ * widely-accepted industry usages.
+ */
+export const GLOSSARY_TERMS = [
+  {
+    term: "OPD",
+    long: "Out-Patient Department",
+    definition:
+      "Care delivered to patients who visit the hospital/clinic and go home the same day — consultations, follow-ups, day procedures, diagnostics. The front door of most hospitals.",
+    related: ["IPD", "EMR"],
+    tone: "brand" as const,
+  },
+  {
+    term: "IPD",
+    long: "In-Patient Department",
+    definition:
+      "Care for patients admitted to the hospital — they occupy a bed, are monitored overnight or longer, and follow a structured journey from admission to discharge. IPD coordination is where most operational complexity lives.",
+    related: ["OPD", "EMR", "Bed", "Discharge summary"],
+    tone: "brand" as const,
+  },
+  {
+    term: "EMR",
+    long: "Electronic Medical Record",
+    definition:
+      "The digitised record of a single patient's consultations, vitals, investigations, prescriptions, and procedures. Distinct from an EHR — EMR is usually scoped to one facility.",
+    related: ["EHR", "Prescription", "Vitals"],
+    tone: "growth" as const,
+  },
+  {
+    term: "EHR",
+    long: "Electronic Health Record",
+    definition:
+      "A longitudinal health record intended to follow the patient across facilities and time. Doctorooms holds EMR per facility but can surface a consolidated view across the patient's history within the platform.",
+    related: ["EMR"],
+    tone: "growth" as const,
+  },
+  {
+    term: "e-Rx",
+    long: "Electronic Prescription",
+    definition:
+      "A clinician-generated prescription issued digitally rather than on paper. Doctorooms supports AI-assisted prescription drafting within the doctor's workflow, with audit and role-based control.",
+    related: ["Prescription", "Pharmacy"],
+    tone: "growth" as const,
+  },
+  {
+    term: "Queue",
+    long: "Patient flow management",
+    definition:
+      "The live, ordered list of patients waiting for a consultation or service — front-desk check-in, token, calling the next patient, and notifications. Doctorooms treats queue as a first-class object tied to the doctor, room, and service.",
+    related: ["Token", "OPD"],
+    tone: "brand" as const,
+  },
+  {
+    term: "Token",
+    long: "Queue position",
+    definition:
+      "A patient's assigned place in a specific queue — typically numbered, sometimes prefixed by service (e.g. G15 for general, S07 for specialist). The patient sees the live count ahead of them.",
+    related: ["Queue"],
+    tone: "brand" as const,
+  },
+  {
+    term: "Vitals",
+    long: "Patient vital signs",
+    definition:
+      "Temperature, pulse, blood pressure, respiratory rate, oxygen saturation (SpO2), and pain score. Recorded on admission, periodically during IPD stay, and at key consultation points.",
+    related: ["IPD", "EMR"],
+    tone: "growth" as const,
+  },
+  {
+    term: "Discharge summary",
+    long: "End-of-stay record",
+    definition:
+      "The structured summary handed to the patient (and forwarded to the next provider) at discharge: admission reason, course in hospital, investigations, procedures, medications on discharge, follow-up plan.",
+    related: ["IPD"],
+    tone: "growth" as const,
+  },
+  {
+    term: "Pharmacy",
+    long: "In-house dispense",
+    definition:
+      "The hospital's own medicine store that dispenses against prescriptions. Doctorooms ties the pharmacy module to inventory, billing, and the prescription so dispense events reflect back to the patient's record.",
+    related: ["Inventory", "e-Rx"],
+    tone: "brand" as const,
+  },
+  {
+    term: "Inventory",
+    long: "Stock & supplies",
+    definition:
+      "Medicine, consumables, and equipment stock with batch, expiry, reorder level, and valuation. Tightly coupled with pharmacy (medicines) and OT (surgical consumables).",
+    related: ["Pharmacy", "OT"],
+    tone: "brand" as const,
+  },
+  {
+    term: "Lab",
+    long: "Laboratory & diagnostics",
+    definition:
+      "Investigations ordered by the clinician — pathology, biochemistry, microbiology, radiology. Doctorooms ties the lab order to the patient's EMR and pushes results back so the doctor sees them inline during the next consultation.",
+    related: ["EMR", "IPD"],
+    tone: "growth" as const,
+  },
+  {
+    term: "OT",
+    long: "Operating Theatre",
+    definition:
+      "Surgical suites and their scheduling, staffing, instrument, and consumable coordination. Tied to inventory (surgical consumables), IPD (admission), and billing (procedure charges).",
+    related: ["Inventory", "IPD", "Billing"],
+    tone: "brand" as const,
+  },
+  {
+    term: "Billing",
+    long: "Patient financials",
+    definition:
+      "Charge capture, claims, payor coordination, and patient-facing invoices. Doctorooms ties billing to every other module so a dispensed medicine or a lab order shows up on the bill without re-keying.",
+    related: ["Insurance", "Pharmacy", "Lab"],
+    tone: "growth" as const,
+  },
+  {
+    term: "Insurance",
+    long: "Payor coordination",
+    definition:
+      "Pre-auth, claim submission, and reconciliation with insurers (TPAs, government schemes, private payors). Doctorooms holds payor eligibility per patient and tracks claim status against the encounter.",
+    related: ["Billing"],
+    tone: "growth" as const,
+  },
+  {
+    term: "Telemedicine",
+    long: "Remote consultation",
+    definition:
+      "Clinician-to-patient consultation over video, voice, or chat — used for follow-ups, second opinions, and access in low-density areas. Doctorooms treats video consults as a first-class consultation type, not a separate product.",
+    related: ["OPD", "EMR"],
+    tone: "brand" as const,
+  },
+  {
+    term: "AI agent",
+    long: "Role-aware assistant",
+    definition:
+      "An assistant that takes natural-language input, maps to an intent, enforces the caller's role and data scope, executes or answers, and is fully auditable. Doctorooms AI agents are role-bound: an admin can ask revenue questions; a doctor can ask about their queue; a nurse can ask about a patient's vitals.",
+    related: ["Audit", "RBAC"],
+    tone: "brand" as const,
+  },
+  {
+    term: "RBAC",
+    long: "Role-Based Access Control",
+    definition:
+      "A security model where what you can see and do is determined by your assigned role (Doctor, Nurse, Receptionist, Pharmacist, Admin…). Doctorooms enforces RBAC at the data and action level — not just the UI.",
+    related: ["Audit", "AI agent"],
+    tone: "growth" as const,
+  },
+  {
+    term: "Audit",
+    long: "Action log",
+    definition:
+      "A tamper-evident record of who did what, when, and to which record. Required for clinical-grade software and central to Doctorooms AI agents — every AI action is logged for review.",
+    related: ["RBAC", "AI agent"],
+    tone: "growth" as const,
+  },
+  {
+    term: "Tenant isolation",
+    long: "Data separation",
+    definition:
+      "Each hospital/clinic's data lives in a logically separate space — one tenant cannot see another's patients, staff, or finances. Foundational for a multi-tenant SaaS in healthcare.",
+    related: ["RBAC"],
+    tone: "growth" as const,
+  },
 ] as const;
 
 export const ROLLOUT_STEPS = [

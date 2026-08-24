@@ -79,7 +79,7 @@ export function ProblemConvergence() {
     <section
       ref={root}
       id="platform"
-      className="ink-section relative isolate overflow-hidden py-24 sm:py-32"
+      className="scroll-anchor ink-section relative isolate overflow-hidden py-24 sm:py-32"
     >
       <div className="pointer-events-none absolute inset-0 -z-10 bg-grid-ink opacity-40" />
       <div className="aurora-blob bg-brand/30" style={{ width: 480, height: 480, top: 80, left: "30%" }} />

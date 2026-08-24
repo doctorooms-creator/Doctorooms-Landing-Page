@@ -430,3 +430,62 @@
     border-radius: inherit;
   }
 }
+
+/* Outside @layer — Tailwind v4 reliably emits plain rules in the
+   final bundle (custom utilities that the content scanner can't
+   detect). Reduced-motion is handled by the global block above. */
+
+/* Per-section scroll anchor margin so jump-to-chapter links land
+   below the sticky header (paired with html.scroll-padding-top). */
+.scroll-anchor {
+  scroll-margin-top: 5rem;
+}
+
+/* Hero headline gradient sweep — a slow horizontal sheen across
+   the brand→growth gradient. */
+.headline-sweep {
+  background-size: 200% 100%;
+  background-position: 0% 0;
+  animation: doctorooms-headline-sweep 8s ease-in-out infinite;
+}
+@keyframes doctorooms-headline-sweep {
+  0%, 100% { background-position: 0% 0; }
+  50% { background-position: 100% 0; }
+}
+
+/* Card lift-on-hover affordance — subtle translateY + border
+   shift. Used on premium cards (hero stat cards, trust points,
+   hospital modules). */
+.lift-on-hover {
+  transition:
+    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+.lift-on-hover:hover {
+  transform: translateY(-2px);
+}
+
+/* Sheen-on-hover — a diagonal light sheen that sweeps across the
+   element on hover. Used on the most premium CTAs. */
+.sheen {
+  position: relative;
+  overflow: hidden;
+}
+.sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    transparent 30%,
+    oklch(1 0 0 / 0.12) 50%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+  pointer-events: none;
+}
+.sheen:hover::after {
+  transform: translateX(100%);
+}

@@ -38,7 +38,7 @@ export function RolloutTimeline() {
       ref={root}
       id="rollout"
       aria-labelledby="rollout-heading"
-      className="relative isolate overflow-hidden py-24 sm:py-32"
+      className="scroll-anchor relative isolate overflow-hidden py-24 sm:py-32"
     >
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div

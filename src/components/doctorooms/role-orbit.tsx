@@ -77,7 +77,7 @@ export function RoleOrbit() {
       ref={rootRef}
       id="roles"
       aria-labelledby="roles-h"
-      className="relative isolate overflow-hidden bg-background py-24 sm:py-32"
+      className="scroll-anchor relative isolate overflow-hidden bg-background py-24 sm:py-32"
     >
       {/* Ambient background */}
       <div className="pointer-events-none absolute inset-0 -z-10">

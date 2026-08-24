@@ -70,7 +70,7 @@ export function AcquisitionFlow() {
       ref={root}
       id="acquisition"
       aria-labelledby="acquisition-heading"
-      className="relative isolate overflow-hidden py-24 sm:py-32"
+      className="scroll-anchor relative isolate overflow-hidden py-24 sm:py-32"
     >
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div

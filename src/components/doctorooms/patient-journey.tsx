@@ -98,7 +98,7 @@ export function PatientJourney() {
       ref={sectionRef}
       id="journey"
       aria-labelledby="journey-h"
-      className="relative isolate overflow-hidden bg-background py-24 sm:py-32"
+      className="scroll-anchor relative isolate overflow-hidden bg-background py-24 sm:py-32"
     >
       {/* Ambient background */}
       <div className="pointer-events-none absolute inset-0 -z-10">

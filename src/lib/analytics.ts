@@ -22,6 +22,10 @@ export type AnalyticsEvent =
   | "keyboard_shortcuts_open"
   | "admin_panel_open"
   | "admin_status_change"
+  | "admin_note_update"
+  | "admin_bulk_delete"
+  | "glossary_open"
+  | "glossary_lookup"
   | "demo_form_success";
 
 type Payload = Record<string, string | number | boolean | undefined>;

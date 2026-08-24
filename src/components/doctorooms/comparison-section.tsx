@@ -45,7 +45,7 @@ export function ComparisonSection() {
       ref={root}
       id="comparison"
       aria-labelledby="comparison-heading"
-      className="ink-section relative isolate overflow-hidden py-24 sm:py-32"
+      className="scroll-anchor ink-section relative isolate overflow-hidden py-24 sm:py-32"
     >
       <div className="pointer-events-none absolute inset-0 -z-10 bg-grid-ink opacity-40" />
       <div

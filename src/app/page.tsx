@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { DemoDialogProvider } from "@/components/doctorooms/demo-dialog";
 import { SiteHeader } from "@/components/doctorooms/site-header";
 import { SiteFooter } from "@/components/doctorooms/site-footer";
@@ -11,11 +12,8 @@ import { DoctorGrowth } from "@/components/doctorooms/doctor-growth";
 import { AIAgentExperience } from "@/components/doctorooms/ai-agent-experience";
 import { VideoConsultation } from "@/components/doctorooms/video-consultation";
 import { QueueExperience } from "@/components/doctorooms/queue-experience";
-import { PatientJourney } from "@/components/doctorooms/patient-journey";
 import { HospitalOS } from "@/components/doctorooms/hospital-os";
 import { OrgFit } from "@/components/doctorooms/org-fit";
-import { IPDJourney } from "@/components/doctorooms/ipd-journey";
-import { RoleOrbit } from "@/components/doctorooms/role-orbit";
 import { TrustSection } from "@/components/doctorooms/trust-section";
 import { FAQSection } from "@/components/doctorooms/faq-section";
 import { ROICalculator } from "@/components/doctorooms/roi-calculator";
@@ -25,6 +23,37 @@ import { ScrollProgress } from "@/components/doctorooms/scroll-progress";
 import { ChapterNavigator } from "@/components/doctorooms/chapter-navigator";
 import { BackToTop } from "@/components/doctorooms/back-to-top";
 import { MobileStickyCTA } from "@/components/doctorooms/mobile-sticky-cta";
+import { LazyMount } from "@/components/doctorooms/lazy-mount";
+import { SectionSkeleton } from "@/components/doctorooms/section-skeleton";
+
+/**
+ * Heavy GSAP-pinned chapters are dynamically imported (ssr:false) so
+ * their JS chunks only download when the user approaches the section.
+ * Paired with LazyMount (IntersectionObserver-gated mount), the heavy
+ * ScrollTrigger setup is deferred until the section is near the
+ * viewport — keeping initial render + LCP light.
+ */
+const PatientJourney = dynamic(
+  () => import("@/components/doctorooms/patient-journey").then((m) => m.PatientJourney),
+  {
+    ssr: false,
+    loading: () => <SectionSkeleton eyebrow="Chapter 08 — Patient Journey" tone="brand" cards={3} />,
+  }
+);
+const IPDJourney = dynamic(
+  () => import("@/components/doctorooms/ipd-journey").then((m) => m.IPDJourney),
+  {
+    ssr: false,
+    loading: () => <SectionSkeleton eyebrow="Chapter 10 — IPD Story" tone="brand" cards={3} />,
+  }
+);
+const RoleOrbit = dynamic(
+  () => import("@/components/doctorooms/role-orbit").then((m) => m.RoleOrbit),
+  {
+    ssr: false,
+    loading: () => <SectionSkeleton eyebrow="Chapter 11 — Role Ecosystem" tone="growth" cards={4} />,
+  }
+);
 
 /**
  * Doctorooms — cinematic landing experience.
@@ -66,16 +95,34 @@ export default function Home() {
           <VideoConsultation />
           {/* Chapter 7 — Smart Queue */}
           <QueueExperience />
-          {/* Chapter 8 — Patient Journey (pinned horizontal) */}
-          <PatientJourney />
+          {/* Chapter 8 — Patient Journey (pinned horizontal) — lazy */}
+          <LazyMount
+            placeholder={<SectionSkeleton eyebrow="Chapter 08 — Patient Journey" tone="brand" cards={3} />}
+            placeholderMinHeight={900}
+            ariaLabel="Patient journey chapter loading"
+          >
+            <PatientJourney />
+          </LazyMount>
           {/* Chapter 9 — Hospital Operations */}
           <HospitalOS />
           {/* Chapter 9½ — Built for your organization (org-fit selector) */}
           <OrgFit />
-          {/* Chapter 10 — IPD Story */}
-          <IPDJourney />
-          {/* Chapter 11 — Role Ecosystem */}
-          <RoleOrbit />
+          {/* Chapter 10 — IPD Story — lazy */}
+          <LazyMount
+            placeholder={<SectionSkeleton eyebrow="Chapter 10 — IPD Story" tone="brand" cards={3} />}
+            placeholderMinHeight={900}
+            ariaLabel="IPD story chapter loading"
+          >
+            <IPDJourney />
+          </LazyMount>
+          {/* Chapter 11 — Role Ecosystem — lazy */}
+          <LazyMount
+            placeholder={<SectionSkeleton eyebrow="Chapter 11 — Role Ecosystem" tone="growth" cards={4} />}
+            placeholderMinHeight={900}
+            ariaLabel="Role ecosystem chapter loading"
+          >
+            <RoleOrbit />
+          </LazyMount>
           {/* Chapter 12 — Trust & Security */}
           <TrustSection />
           {/* Chapter 12½ — Questions (FAQ) */}

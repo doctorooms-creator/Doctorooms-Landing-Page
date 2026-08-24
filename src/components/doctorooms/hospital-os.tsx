@@ -67,7 +67,7 @@ export function HospitalOS() {
       ref={rootRef}
       id="operations"
       aria-labelledby="operations-h"
-      className="relative isolate overflow-hidden bg-background py-24 sm:py-32"
+      className="scroll-anchor relative isolate overflow-hidden bg-background py-24 sm:py-32"
     >
       {/* Ambient background */}
       <div className="pointer-events-none absolute inset-0 -z-10">
@@ -120,7 +120,7 @@ export function HospitalOS() {
                     module: m.key,
                   })
                 }
-                className="group relative flex flex-col gap-3 rounded-2xl border border-border/70 bg-card p-4 text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] hover:border-brand/40 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="lift-on-hover group relative flex flex-col gap-3 rounded-2xl border border-border/70 bg-card p-4 text-left shadow-sm hover:scale-[1.02] hover:border-brand/40 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <div className="flex items-center justify-between">
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-soft text-brand transition group-hover:scale-105">

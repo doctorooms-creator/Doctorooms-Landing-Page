@@ -18,7 +18,7 @@ export function FinalCTA() {
       ref={ref}
       id="demo"
       aria-labelledby="demo-title"
-      className="ink-section relative isolate flex min-h-[88vh] items-center justify-center overflow-hidden py-28 sm:py-36"
+      className="scroll-anchor ink-section relative isolate flex min-h-[88vh] items-center justify-center overflow-hidden py-28 sm:py-36"
     >
       {/* Cinematic backdrop */}
       <div className="pointer-events-none absolute inset-0 -z-10">

@@ -100,7 +100,7 @@ export function HeroExperience() {
     <section
       ref={root}
       id="top"
-      className="relative isolate overflow-hidden bg-background pt-28 sm:pt-32"
+      className="scroll-anchor relative isolate overflow-hidden bg-background pt-28 sm:pt-32"
     >
       {/* Background aurora + grid */}
       <div className="pointer-events-none absolute inset-0 -z-10">
@@ -131,7 +131,7 @@ export function HeroExperience() {
             </span>
             <span className="block overflow-hidden">
               <span className="block">
-                <span className="bg-gradient-to-r from-brand via-brand to-growth bg-clip-text text-transparent">
+                <span className="headline-sweep bg-gradient-to-r from-brand via-brand to-growth bg-clip-text text-transparent">
                   One Intelligent Platform.
                 </span>
               </span>
@@ -146,7 +146,7 @@ export function HeroExperience() {
             <Button
               size="lg"
               onClick={() => { track("hero_demo_click", { source: "hero" }); open(); }}
-              className="group"
+              className="sheen group"
             >
               Book a Private Demo
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />

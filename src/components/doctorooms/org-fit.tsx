@@ -57,7 +57,7 @@ export function OrgFit() {
       ref={root}
       id="org-fit"
       aria-labelledby="org-fit-heading"
-      className="relative isolate overflow-hidden py-24 sm:py-32"
+      className="scroll-anchor relative isolate overflow-hidden py-24 sm:py-32"
     >
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="aurora-blob bg-brand/20" style={{ width: 420, height: 420, top: 60, left: "20%" }} />

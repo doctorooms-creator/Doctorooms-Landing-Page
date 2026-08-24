@@ -9,12 +9,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowUp, Keyboard, ShieldCheck, X } from "lucide-react";
+import { ArrowUp, BookOpen, Keyboard, ShieldCheck, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDemoDialog } from "./demo-dialog";
 import { track } from "@/lib/analytics";
 import { KEYBOARD_SHORTCUTS } from "@/data/doctorooms";
 import { AdminOverlay } from "./admin-overlay";
+import { GlossaryOverlay } from "./glossary-overlay";
 
 /**
  * BackToTop — floating action cluster + global keyboard shortcuts + admin overlay.
@@ -28,6 +29,7 @@ import { AdminOverlay } from "./admin-overlay";
  *   B           → open Book-a-Demo
  *   T           → scroll to top
  *   ?           → open this shortcuts help dialog
+ *   G           → open the healthcare glossary
  *   Shift + A   → open the in-page team admin panel (demo-request triage)
  *   Esc is handled natively by Radix dialogs.
  *
@@ -40,6 +42,7 @@ export function BackToTop() {
   const [hint, setHint] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [glossaryOpen, setGlossaryOpen] = useState(false);
   const { open } = useDemoDialog();
 
   useEffect(() => {
@@ -54,6 +57,11 @@ export function BackToTop() {
   const openAdmin = useCallback(() => {
     track("admin_panel_open", { source: "keyboard_shortcut" });
     setAdminOpen(true);
+  }, []);
+
+  const openGlossary = useCallback(() => {
+    track("glossary_open", { source: "keyboard_shortcut" });
+    setGlossaryOpen(true);
   }, []);
 
   useEffect(() => {
@@ -90,11 +98,14 @@ export function BackToTop() {
         e.preventDefault();
         track("keyboard_shortcuts_open", { source: "keyboard_shortcut" });
         setHelpOpen(true);
+      } else if (key === "g") {
+        e.preventDefault();
+        openGlossary();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, openAdmin]);
+  }, [open, openAdmin, openGlossary]);
 
   const toTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -109,6 +120,12 @@ export function BackToTop() {
     track("admin_panel_open", { source: "shortcuts_dialog" });
     setHelpOpen(false);
     setAdminOpen(true);
+  };
+
+  const openGlossaryFromHelp = () => {
+    track("glossary_open", { source: "shortcuts_dialog" });
+    setHelpOpen(false);
+    setGlossaryOpen(true);
   };
 
   return (
@@ -174,7 +191,10 @@ export function BackToTop() {
 
       {/* Keyboard shortcuts help dialog */}
       <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent
+          className="sm:max-w-md"
+          aria-describedby="shortcuts-desc"
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-soft text-brand">
@@ -182,7 +202,7 @@ export function BackToTop() {
               </span>
               Keyboard shortcuts
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription id="shortcuts-desc">
               Move through Doctorooms faster. Shortcuts are ignored while
               you&apos;re typing in a field.
             </DialogDescription>
@@ -223,26 +243,42 @@ export function BackToTop() {
             </Button>
           </div>
 
-          <div className="mt-1 flex flex-wrap items-center gap-2 rounded-lg border border-brand/20 bg-brand-soft/30 px-3 py-2.5">
-            <ShieldCheck className="h-4 w-4 shrink-0 text-brand" />
-            <div className="min-w-0 flex-1 text-[11px] text-muted-foreground">
-              Team member? Open the in-page admin panel to triage inbound
-              demo requests.
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={openAdminFromHelp}
-              className="h-8 border-brand/40 text-brand hover:bg-brand-soft/40 hover:text-brand"
+          {/* Cross-links to glossary + admin */}
+          <div className="mt-1 grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={openGlossaryFromHelp}
+              className="group flex items-center gap-2 rounded-lg border border-growth/20 bg-growth/5 px-3 py-2.5 text-left transition-colors hover:bg-growth/10"
             >
-              Open team admin
-            </Button>
+              <BookOpen className="h-4 w-4 shrink-0 text-growth" />
+              <div className="min-w-0 flex-1 text-[11px] text-muted-foreground">
+                <div className="font-medium text-foreground">Open glossary</div>
+                <div>OPD, IPD, EMR, RBAC…</div>
+              </div>
+              <kbd className="self-center text-[10px]">G</kbd>
+            </button>
+            <button
+              type="button"
+              onClick={openAdminFromHelp}
+              className="group flex items-center gap-2 rounded-lg border border-brand/20 bg-brand-soft/30 px-3 py-2.5 text-left transition-colors hover:bg-brand-soft/50"
+            >
+              <ShieldCheck className="h-4 w-4 shrink-0 text-brand" />
+              <div className="min-w-0 flex-1 text-[11px] text-muted-foreground">
+                <div className="font-medium text-foreground">Team admin</div>
+                <div>Triage inbound demo requests</div>
+              </div>
+              <kbd className="self-center text-[10px]">
+                <span className="opacity-60">⇧</span>A
+              </kbd>
+            </button>
           </div>
         </DialogContent>
       </Dialog>
 
       {/* In-page team admin panel */}
       <AdminOverlay open={adminOpen} onOpenChange={setAdminOpen} />
+      {/* Healthcare glossary overlay */}
+      <GlossaryOverlay open={glossaryOpen} onOpenChange={setGlossaryOpen} />
     </>
   );
 }

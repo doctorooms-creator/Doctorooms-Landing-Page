@@ -31,7 +31,7 @@ export function TrustSection() {
       ref={ref}
       id="security"
       aria-labelledby="security-title"
-      className="relative isolate overflow-hidden bg-background py-24 sm:py-32"
+      className="scroll-anchor relative isolate overflow-hidden bg-background py-24 sm:py-32"
     >
       {/* Calm ambient backdrop — a breather after dark cinematic sections */}
       <div className="pointer-events-none absolute inset-0 -z-10">
@@ -77,7 +77,7 @@ export function TrustSection() {
               <div
                 key={p.title}
                 data-anim
-                className="group relative rounded-2xl border border-border/70 bg-card p-6 transition-all duration-300 hover:-translate-y-1 hover:border-brand/40 hover:shadow-lg"
+                className="lift-on-hover group relative rounded-2xl border border-border/70 bg-card p-6 hover:border-brand/40 hover:shadow-lg"
               >
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-soft text-brand transition-colors group-hover:bg-brand group-hover:text-brand-foreground">
                   <Icon className="h-5 w-5" aria-hidden="true" />

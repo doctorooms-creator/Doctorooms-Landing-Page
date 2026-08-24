@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -23,6 +24,10 @@ import { track } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import {
   AlertCircle,
+  Archive,
+  ArrowDownAZ,
+  ArrowUpAZ,
+  Check,
   CheckCircle2,
   Clock,
   ExternalLink,
@@ -30,10 +35,13 @@ import {
   Loader2,
   Mail,
   Phone,
+  Pencil,
   RefreshCw,
   Search,
   ShieldCheck,
+  Trash2,
   Users,
+  X,
 } from "lucide-react";
 
 /**
@@ -42,15 +50,20 @@ import {
  * Opened by:
  *   • `Shift + A` (registered by `BackToTop` so all global shortcuts live in one place)
  *   • the "Team admin" entry added to the keyboard-shortcuts help dialog
+ *   • a `#admin` URL hash deep-link (so the team can bookmark/share)
  *
- * Pulls `/api/demo` (GET, 50 most recent) and lets the team:
+ * Capabilities:
  *   • Search across name/email/org/orgType
  *   • Filter by status (new / contacted / scheduled / archived)
- *   • Change status inline (PATCH /api/demo?id=...) — useful triage workflow
- *   • See KPI counts at a glance
+ *   • Sort by createdAt asc/desc (toggle)
+ *   • Inline note editing (PATCH { note }) — team-side context per lead
+ *   • Status changes inline (PATCH { status }) — triage workflow
+ *   • Batch select + delete (DELETE ?ids=...) for cleanup
+ *   • Export filtered rows to CSV
+ *   • KPI counts at a glance — click a KPI to filter by that status
  *
- * Reduced-motion safe (CSS only). No auth in this demo sandbox; the comment
- * in the header makes that clear to the team.
+ * Reduced-motion safe (CSS only). No auth in this demo sandbox; the
+ * comment in the header makes that clear to the team.
  */
 
 type Row = {
@@ -117,14 +130,26 @@ function escapeCsv(v: string) {
   return v;
 }
 
-export function AdminOverlay({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+export function AdminOverlay({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+}) {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<string>("all");
+  const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [lastFetch, setLastFetch] = useState<number | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -142,6 +167,26 @@ export function AdminOverlay({ open, onOpenChange }: { open: boolean; onOpenChan
     }
   }, []);
 
+  // Open via #admin hash deep-link.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const checkHash = () => {
+      if (window.location.hash === "#admin") {
+        track("admin_panel_open", { source: "url_hash" });
+        onOpenChange(true);
+        // Clean up the hash so subsequent Esc + re-open doesn't auto-trigger.
+        try {
+          history.replaceState(null, "", window.location.pathname);
+        } catch {
+          // ignore
+        }
+      }
+    };
+    checkHash();
+    window.addEventListener("hashchange", checkHash);
+    return () => window.removeEventListener("hashchange", checkHash);
+  }, [onOpenChange]);
+
   useEffect(() => {
     if (open && rows.length === 0 && !loading && !error) {
       void load();
@@ -150,7 +195,7 @@ export function AdminOverlay({ open, onOpenChange }: { open: boolean; onOpenChan
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return rows.filter((r) => {
+    const list = rows.filter((r) => {
       if (filter !== "all" && r.status !== filter) return false;
       if (!q) return true;
       return (
@@ -160,15 +205,46 @@ export function AdminOverlay({ open, onOpenChange }: { open: boolean; onOpenChan
         (r.orgType ?? "").toLowerCase().includes(q)
       );
     });
-  }, [rows, filter, query]);
+    list.sort((a, b) => {
+      const at = new Date(a.createdAt).getTime();
+      const bt = new Date(b.createdAt).getTime();
+      return sortDir === "asc" ? at - bt : bt - at;
+    });
+    return list;
+  }, [rows, filter, query, sortDir]);
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { new: 0, contacted: 0, scheduled: 0, archived: 0 };
+    const c: Record<string, number> = {
+      new: 0,
+      contacted: 0,
+      scheduled: 0,
+      archived: 0,
+    };
     for (const r of rows) {
       if (c[r.status] != null) c[r.status] += 1;
     }
     return c;
   }, [rows]);
+
+  const allFilteredSelected =
+    filtered.length > 0 && filtered.every((r) => selected.has(r.id));
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (allFilteredSelected) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(filtered.map((r) => r.id)));
+    }
+  }
 
   async function changeStatus(r: Row, next: string) {
     setUpdatingId(r.id);
@@ -182,7 +258,9 @@ export function AdminOverlay({ open, onOpenChange }: { open: boolean; onOpenChan
       const json = await res.json();
       const updated = json.row as Row | undefined;
       setRows((prev) =>
-        prev.map((row) => (row.id === r.id ? { ...row, status: updated?.status ?? next } : row))
+        prev.map((row) =>
+          row.id === r.id ? { ...row, status: updated?.status ?? next } : row
+        )
       );
       track("admin_status_change", {
         id: r.id,
@@ -197,8 +275,116 @@ export function AdminOverlay({ open, onOpenChange }: { open: boolean; onOpenChan
     }
   }
 
+  async function saveNote(r: Row, override?: string) {
+    setNoteSaving(true);
+    // Use override if provided (Clear button) so we don't race against
+    // async setState; otherwise use the live textarea draft.
+    const value = override !== undefined ? override : noteDraft;
+    try {
+      const res = await fetch(`/api/demo?id=${encodeURIComponent(r.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note: value }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const updated = json.row as Row | undefined;
+      setRows((prev) =>
+        prev.map((row) =>
+          row.id === r.id
+            ? { ...row, note: updated?.note ?? value }
+            : row
+        )
+      );
+      track("admin_note_update", {
+        id: r.id,
+        org: r.org,
+        cleared: !value.trim(),
+      });
+      setEditingNoteId(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save note");
+    } finally {
+      setNoteSaving(false);
+    }
+  }
+
+  async function bulkDelete() {
+    if (selected.size === 0) return;
+    const ids = Array.from(selected);
+    if (
+      !window.confirm(
+        `Delete ${ids.length} selected demo request${ids.length === 1 ? "" : "s"}? This cannot be undone.`
+      )
+    ) {
+      return;
+    }
+    setBulkDeleting(true);
+    try {
+      const res = await fetch(
+        `/api/demo?ids=${ids.map(encodeURIComponent).join(",")}`,
+        { method: "DELETE" }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const deleted = (json.deleted as number | undefined) ?? 0;
+      setRows((prev) => prev.filter((r) => !selected.has(r.id)));
+      track("admin_bulk_delete", { count: deleted });
+      setSelected(new Set());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to delete");
+    } finally {
+      setBulkDeleting(false);
+    }
+  }
+
+  async function archiveSelected() {
+    if (selected.size === 0) return;
+    setBulkDeleting(true);
+    try {
+      // Sequential PATCHes — small batch sizes in practice.
+      const ids = Array.from(selected);
+      await Promise.all(
+        ids.map(async (id) => {
+          const r = rows.find((row) => row.id === id);
+          if (!r || r.status === "archived") return;
+          const res = await fetch(`/api/demo?id=${encodeURIComponent(id)}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "archived" }),
+          });
+          if (res.ok) {
+            track("admin_status_change", {
+              id,
+              from: r.status,
+              to: "archived",
+              org: r.org,
+            });
+          }
+        })
+      );
+      // Refresh from server to get authoritative state.
+      await load();
+      setSelected(new Set());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to archive");
+    } finally {
+      setBulkDeleting(false);
+    }
+  }
+
   function exportCsv() {
-    const header = ["name", "email", "phone", "org", "orgType", "size", "status", "createdAt", "note"];
+    const header = [
+      "name",
+      "email",
+      "phone",
+      "org",
+      "orgType",
+      "size",
+      "status",
+      "createdAt",
+      "note",
+    ];
     const lines = filtered.map((r) =>
       [
         r.name,
@@ -219,7 +405,9 @@ export function AdminOverlay({ open, onOpenChange }: { open: boolean; onOpenChan
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `doctorooms-demo-requests-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `doctorooms-demo-requests-${new Date()
+      .toISOString()
+      .slice(0, 10)}.csv`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -248,6 +436,8 @@ export function AdminOverlay({ open, onOpenChange }: { open: boolean; onOpenChan
               Inbound &quot;Book a Private Demo&quot; submissions, persisted to the
               landing-page SQLite database. No auth in this sandbox view —
               replace with a real auth gate before sharing the URL broadly.
+              Tip: bookmark <code className="rounded bg-muted/60 px-1 py-0.5 text-[10px]">#admin</code> to
+              reopen this panel directly.
             </DialogDescription>
           </DialogHeader>
 
@@ -317,6 +507,21 @@ export function AdminOverlay({ open, onOpenChange }: { open: boolean; onOpenChan
               type="button"
               variant="outline"
               size="sm"
+              onClick={() => setSortDir((d) => (d === "desc" ? "asc" : "desc"))}
+              className="h-9"
+              aria-label={`Sort by created date ${sortDir === "desc" ? "descending" : "ascending"}`}
+            >
+              {sortDir === "desc" ? (
+                <ArrowDownAZ className="h-3.5 w-3.5" />
+              ) : (
+                <ArrowUpAZ className="h-3.5 w-3.5" />
+              )}
+              {sortDir === "desc" ? "Newest" : "Oldest"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               onClick={() => void load()}
               disabled={loading}
               className="h-9"
@@ -342,10 +547,58 @@ export function AdminOverlay({ open, onOpenChange }: { open: boolean; onOpenChan
               <span className="tabular-nums">{rows.length}</span>
               <span>shown</span>
               {lastFetch && (
-                <span className="ml-1">· updated {timeAgo(new Date(lastFetch).toISOString())}</span>
+                <span className="ml-1">
+                  · updated {timeAgo(new Date(lastFetch).toISOString())}
+                </span>
               )}
             </div>
           </div>
+
+          {/* Bulk action bar */}
+          {selected.size > 0 && (
+            <div className="flex flex-wrap items-center gap-2 border-b border-brand/20 bg-brand-soft/20 px-4 py-2 text-[11px] sm:px-6">
+              <span className="font-medium text-brand">
+                <span className="tabular-nums">{selected.size}</span> selected
+              </span>
+              <span className="text-muted-foreground">·</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void archiveSelected()}
+                disabled={bulkDeleting}
+                className="h-7 border-brand/40 px-2 text-[11px] text-brand hover:bg-brand-soft/40 hover:text-brand"
+              >
+                <Archive className="h-3 w-3" />
+                Archive selected
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void bulkDelete()}
+                disabled={bulkDeleting}
+                className="h-7 border-destructive/40 px-2 text-[11px] text-destructive hover:bg-destructive/10 hover:text-destructive"
+              >
+                {bulkDeleting ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Trash2 className="h-3 w-3" />
+                )}
+                Delete selected
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelected(new Set())}
+                className="h-7 px-2 text-[11px]"
+              >
+                <X className="h-3 w-3" />
+                Clear
+              </Button>
+            </div>
+          )}
 
           {/* Body */}
           <div className="min-h-0 flex-1 overflow-y-auto">
@@ -394,100 +647,210 @@ export function AdminOverlay({ open, onOpenChange }: { open: boolean; onOpenChan
                 )}
               </div>
             ) : (
-              <ul className="divide-y divide-border/40">
-                {filtered.map((r) => {
-                  const meta = statusMeta(r.status);
-                  const StatusIcon = meta.icon;
-                  const next = STATUS_NEXT[r.status] ?? "new";
-                  const isUpdating = updatingId === r.id;
-                  return (
-                    <li
-                      key={r.id}
-                      className="grid grid-cols-1 gap-3 px-4 py-3.5 transition-colors hover:bg-muted/20 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:px-6"
-                    >
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-sm font-semibold text-foreground">{r.name}</span>
-                          <Badge className={cn("border", toneClasses(meta.tone))}>
-                            <StatusIcon className="h-3 w-3" />
-                            {meta.label}
-                          </Badge>
-                          {r.orgType && (
-                            <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                              {r.orgType}
-                            </span>
-                          )}
-                          {r.size && (
-                            <span className="text-[10px] text-muted-foreground">· {r.size}</span>
-                          )}
-                          <span className="text-[10px] text-muted-foreground">· {timeAgo(r.createdAt)}</span>
-                        </div>
-                        <div className="mt-0.5 truncate text-xs text-muted-foreground">
-                          {r.org}
-                          <span className="mx-1.5 opacity-40">·</span>
-                          <a
-                            href={`mailto:${r.email}`}
-                            className="text-brand hover:underline"
-                          >
-                            {r.email}
-                          </a>
-                          {r.phone && (
-                            <>
-                              <span className="mx-1.5 opacity-40">·</span>
-                              <a href={`tel:${r.phone}`} className="inline-flex items-center gap-1 hover:underline">
-                                <Phone className="h-3 w-3" /> {r.phone}
-                              </a>
-                            </>
-                          )}
-                        </div>
-                        {r.note && (
-                          <div className="mt-1 line-clamp-2 text-xs italic text-muted-foreground">
-                            “{r.note}”
-                          </div>
+              <>
+                {/* Select-all row */}
+                <label className="flex items-center gap-2 border-b border-border/40 bg-muted/20 px-4 py-2 text-[11px] text-muted-foreground sm:px-6">
+                  <input
+                    type="checkbox"
+                    className="h-3.5 w-3.5 accent-brand"
+                    checked={allFilteredSelected}
+                    onChange={toggleSelectAll}
+                    aria-label="Select all visible demo requests"
+                  />
+                  <span className="tabular-nums">{selected.size}</span> of{" "}
+                  <span className="tabular-nums">{filtered.length}</span> selected
+                </label>
+                <ul className="divide-y divide-border/40">
+                  {filtered.map((r) => {
+                    const meta = statusMeta(r.status);
+                    const StatusIcon = meta.icon;
+                    const next = STATUS_NEXT[r.status] ?? "new";
+                    const isUpdating = updatingId === r.id;
+                    const isSelected = selected.has(r.id);
+                    const isEditingNote = editingNoteId === r.id;
+                    return (
+                      <li
+                        key={r.id}
+                        className={cn(
+                          "grid grid-cols-1 gap-3 px-4 py-3.5 transition-colors hover:bg-muted/20 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:px-6",
+                          isSelected && "bg-brand-soft/20"
                         )}
-                      </div>
-                      <div className="flex items-center gap-2 sm:justify-end">
-                        <Select
-                          value={r.status}
-                          onValueChange={(v) => void changeStatus(r, v)}
-                          disabled={isUpdating}
-                        >
-                          <SelectTrigger
-                            className="h-8 w-[140px] text-xs"
-                            aria-label={`Change status for ${r.name}`}
+                      >
+                        <div className="flex min-w-0 items-start gap-3">
+                          <input
+                            type="checkbox"
+                            className="mt-1 h-3.5 w-3.5 shrink-0 accent-brand"
+                            checked={isSelected}
+                            onChange={() => toggleSelect(r.id)}
+                            aria-label={`Select ${r.name}`}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-sm font-semibold text-foreground">
+                                {r.name}
+                              </span>
+                              <Badge className={cn("border", toneClasses(meta.tone))}>
+                                <StatusIcon className="h-3 w-3" />
+                                {meta.label}
+                              </Badge>
+                              {r.orgType && (
+                                <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                                  {r.orgType}
+                                </span>
+                              )}
+                              {r.size && (
+                                <span className="text-[10px] text-muted-foreground">
+                                  · {r.size}
+                                </span>
+                              )}
+                              <span className="text-[10px] text-muted-foreground">
+                                · {timeAgo(r.createdAt)}
+                              </span>
+                            </div>
+                            <div className="mt-0.5 truncate text-xs text-muted-foreground">
+                              {r.org}
+                              <span className="mx-1.5 opacity-40">·</span>
+                              <a
+                                href={`mailto:${r.email}`}
+                                className="text-brand hover:underline"
+                              >
+                                {r.email}
+                              </a>
+                              {r.phone && (
+                                <>
+                                  <span className="mx-1.5 opacity-40">·</span>
+                                  <a
+                                    href={`tel:${r.phone}`}
+                                    className="inline-flex items-center gap-1 hover:underline"
+                                  >
+                                    <Phone className="h-3 w-3" /> {r.phone}
+                                  </a>
+                                </>
+                              )}
+                            </div>
+
+                            {/* Note display / inline editor */}
+                            {isEditingNote ? (
+                              <div className="mt-2 space-y-2">
+                                <Textarea
+                                  value={noteDraft}
+                                  onChange={(e) => setNoteDraft(e.target.value)}
+                                  placeholder="Add a private team note: preferred time, specialty, decision stage…"
+                                  rows={3}
+                                  className="text-xs"
+                                  aria-label={`Edit note for ${r.name}`}
+                                  autoFocus
+                                />
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={() => void saveNote(r)}
+                                    disabled={noteSaving}
+                                    className="h-7 px-2.5 text-[11px]"
+                                  >
+                                    {noteSaving ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <Check className="h-3 w-3" />
+                                    )}
+                                    Save note
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                      setEditingNoteId(null);
+                                      setNoteDraft("");
+                                    }}
+                                    className="h-7 px-2.5 text-[11px]"
+                                  >
+                                    Cancel
+                                  </Button>
+                                  {r.note && (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => void saveNote(r, "")}
+                                      disabled={noteSaving}
+                                      className="h-7 px-2.5 text-[11px] text-muted-foreground hover:text-destructive"
+                                    >
+                                      Clear
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            ) : r.note ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingNoteId(r.id);
+                                  setNoteDraft(r.note ?? "");
+                                }}
+                                className="group mt-1 flex w-full items-start gap-1.5 rounded-md px-1 py-0.5 text-left text-xs italic text-muted-foreground transition-colors hover:bg-muted/40 hover:not-italic"
+                              >
+                                <Pencil className="mt-0.5 h-3 w-3 shrink-0 opacity-50 group-hover:opacity-100" />
+                                <span className="line-clamp-2">&ldquo;{r.note}&rdquo;</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingNoteId(r.id);
+                                  setNoteDraft("");
+                                }}
+                                className="mt-1 inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-[11px] text-muted-foreground/70 transition-colors hover:bg-muted/40 hover:text-brand"
+                              >
+                                <Pencil className="h-3 w-3" />
+                                Add team note
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 sm:justify-end">
+                          <Select
+                            value={r.status}
+                            onValueChange={(v) => void changeStatus(r, v)}
+                            disabled={isUpdating}
                           >
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {STATUSES.map((s) => (
-                              <SelectItem key={s.value} value={s.value}>
-                                {s.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="h-8 px-2.5 text-[11px]"
-                          onClick={() => void changeStatus(r, next)}
-                          disabled={isUpdating}
-                          aria-label={`Advance ${r.name} to ${statusMeta(next).label}`}
-                        >
-                          {isUpdating ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <>
-                              → {statusMeta(next).label}
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+                            <SelectTrigger
+                              className="h-8 w-[140px] text-xs"
+                              aria-label={`Change status for ${r.name}`}
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {STATUSES.map((s) => (
+                                <SelectItem key={s.value} value={s.value}>
+                                  {s.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-8 px-2.5 text-[11px]"
+                            onClick={() => void changeStatus(r, next)}
+                            disabled={isUpdating}
+                            aria-label={`Advance ${r.name} to ${statusMeta(next).label}`}
+                          >
+                            {isUpdating ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <>→ {statusMeta(next).label}</>
+                            )}
+                          </Button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
             )}
           </div>
 
