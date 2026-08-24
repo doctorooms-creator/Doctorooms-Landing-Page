@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useReveal, useScrollTriggerHygiene } from "@/lib/anim/hooks";
 import { useReducedMotion } from "@/lib/anim/gsap-register";
 import { track } from "@/lib/analytics";
 import { OUTCOMES, OUTCOME_KPIS } from "@/data/doctorooms";
 import { useDemoDialog } from "./demo-dialog";
-import { ArrowRight, ChevronLeft, ChevronRight, Quote, Sparkles } from "lucide-react";
+import { GlossaryTerm } from "./glossary-context";
+import { ArrowRight, ChevronLeft, ChevronRight, Copy, CheckCheck, Quote, Share2, Sparkles } from "lucide-react";
 
 /**
  * OutcomesSection — Chapter 12¼ "Outcomes" (sits between Trust and FAQ).
@@ -31,8 +32,67 @@ import { ArrowRight, ChevronLeft, ChevronRight, Quote, Sparkles } from "lucide-r
  *    to the patient-journey chapter).
  *
  * Reduced-motion safe (CSS-revealed, framer-motion not used here).
- * Analytics: tracks `testimonial_quote_cycle` on prev/next + arrow-key nav.
+ * Analytics: tracks `testimonial_quote_cycle` on prev/next + arrow-key nav,
+ * `outcome_deep_link` on `#outcome=<key>` hash navigation, `outcome_modal_share`
+ * on copy-deep-link, and `outcome_journey_jump` on the journey CTA click.
+ *
+ * Deep-link: `#outcome=<key>` (e.g. `#outcome=clinic-owner`) opens the
+ * outcomes section pre-seeded to that featured quote. Mirrors the
+ * comparison-section's `#compare=` pattern. Useful for the sales team
+ * to share a specific testimonial in a meeting.
+ *
+ * Inline glossary: clinical terms (OPD / IPD / e-Rx / Queue) inside each
+ * quote are wrapped in <GlossaryTerm> chips so non-clinical readers can
+ * tap to look up the term without leaving the testimonial's voice.
  */
+
+/**
+ * renderQuote — wraps clinical acronyms/terms in a quote string with
+ * inline <GlossaryTerm> chips. The wrapper scans the raw string for
+ * known terms (case-sensitive to avoid false positives like "open"
+ * matching "OPD") and splits the string into text + chip fragments.
+ *
+ * The terms list mirrors the glossary-overlay's GLOSSARY entries. Only
+ * terms that appear in at least one outcome quote are included so we
+ * don't pay the cost of unused patterns.
+ */
+const OUTCOME_QUOTE_TERMS = [
+  "OPD",
+  "IPD",
+  "EMR",
+  "e-Rx",
+  "Queue",
+  "Vitals",
+  "Pharmacy",
+  "Lab",
+  "Billing",
+] as const;
+
+function escapeRegex(s: string): string {
+  // Standard escape for regex metacharacters — safe for arbitrary input.
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function renderQuote(quote: string) {
+  // Sort by length DESC so multi-word terms (e.g. "front desk") match
+  // before single tokens ("front" or "desk" alone would not match).
+  const terms = [...OUTCOME_QUOTE_TERMS].sort((a, b) => b.length - a.length);
+  const pattern = new RegExp(`(${terms.map(escapeRegex).join("|")})`, "g");
+  const parts = quote.split(pattern);
+  return parts.map((part, i) => {
+    // Even indices are plain text; odd indices are matches (because the
+    // capturing group's split semantics).
+    if (i % 2 === 1) {
+      return (
+        <GlossaryTerm key={`${part}-${i}`} term={part}>
+          {part}
+        </GlossaryTerm>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
 export function OutcomesSection() {
   const root = useRef<HTMLDivElement>(null);
   const reduced = useReducedMotion();
@@ -40,19 +100,103 @@ export function OutcomesSection() {
   useScrollTriggerHygiene();
   const { open } = useDemoDialog();
   const [active, setActive] = useState(0);
+  const [copied, setCopied] = useState(false);
 
-  function go(delta: number) {
+  const go = useCallback((delta: number) => {
     const n = OUTCOMES.length;
-    const next = (active + delta + n) % n;
-    track("testimonial_quote_cycle", {
-      from: OUTCOMES[active].key,
-      to: OUTCOMES[next].key,
+    setActive((cur) => {
+      const next = (cur + delta + n) % n;
+      track("testimonial_quote_cycle", {
+        from: OUTCOMES[cur].key,
+        to: OUTCOMES[next].key,
+      });
+      return next;
     });
-    setActive(next);
+  }, []);
+
+  const setActiveTracked = useCallback((idx: number) => {
+    setActive((cur) => {
+      if (cur === idx) return cur;
+      track("testimonial_quote_cycle", {
+        from: OUTCOMES[cur].key,
+        to: OUTCOMES[idx].key,
+      });
+      return idx;
+    });
+  }, []);
+
+  // Deep-link via `#outcome=<key>`. URL-encoded to handle dashes safely.
+  // Cleans the hash after triggering so subsequent Esc + re-open doesn't loop.
+  // Mirrors the comparison-section's `#compare=` pattern.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const checkHash = () => {
+      const hash = window.location.hash;
+      if (!hash.startsWith("#outcome=")) return;
+      const raw = hash.slice("#outcome=".length);
+      const decoded = (() => {
+        try {
+          return decodeURIComponent(raw);
+        } catch {
+          return raw;
+        }
+      })();
+      const idx = OUTCOMES.findIndex((o) => o.key === decoded);
+      if (idx < 0) return;
+      track("outcome_deep_link", { key: OUTCOMES[idx].key });
+      setActive(idx);
+      // Smooth-scroll to the outcomes chapter so the user lands on the
+      // featured quote (rather than wherever they happened to be).
+      const el = document.querySelector("#outcomes");
+      if (el) {
+        const top =
+          (el as HTMLElement).getBoundingClientRect().top +
+          window.scrollY -
+          64;
+        window.scrollTo({ top, behavior: "smooth" });
+      }
+      try {
+        history.replaceState(null, "", window.location.pathname);
+      } catch {
+        // ignore
+      }
+    };
+    checkHash();
+    window.addEventListener("hashchange", checkHash);
+    return () => window.removeEventListener("hashchange", checkHash);
+  }, []);
+
+  async function copyDeepLink() {
+    const featuredOutcome = OUTCOMES[active];
+    if (!featuredOutcome) return;
+    const url =
+      typeof window !== "undefined"
+        ? `${window.location.origin}${window.location.pathname}#outcome=${encodeURIComponent(featuredOutcome.key)}`
+        : "";
+    track("outcome_modal_share", { key: featuredOutcome.key });
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else if (document.execCommand) {
+        const ta = document.createElement("textarea");
+        ta.value = url;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // ignore — clipboard failure is non-fatal
+    }
   }
 
   function jumpToJourney() {
-    track("platform_explore_click", { source: "outcomes_section" });
+    track("outcome_journey_jump", { from: OUTCOMES[active].key });
     const el = document.querySelector("#journey");
     if (!el) return;
     const top = (el as HTMLElement).getBoundingClientRect().top + window.scrollY - 64;
@@ -84,7 +228,7 @@ export function OutcomesSection() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  });
+  }, [go]);
 
   const featured = OUTCOMES[active];
   const others = OUTCOMES.filter((_, i) => i !== active);
@@ -173,6 +317,7 @@ export function OutcomesSection() {
                 aria-hidden
               />
               <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-brand">
+                <span className="live-indicator-dot" aria-hidden />
                 <Sparkles className="h-3.5 w-3.5" />
                 {featured.archetype}
               </div>
@@ -185,34 +330,55 @@ export function OutcomesSection() {
                     : "animate-[outcomes-quote-fade_0.5s_ease-out]"
                 )}
               >
-                &ldquo;{featured.quote}&rdquo;
+                &ldquo;{renderQuote(featured.quote)}&rdquo;
               </blockquote>
+              {/* Quote-arc — a thin brand→growth underline beneath the
+                  featured quote. Adds a premium editorial flourish. */}
+              <div className="quote-arc mt-3" aria-hidden />
               <div className="mt-5 text-sm font-medium text-foreground">
                 {featured.role}
               </div>
-              {/* Pagination dots */}
-              <div className="mt-6 flex items-center gap-1.5">
-                {OUTCOMES.map((o, i) => (
-                  <button
-                    key={o.key}
-                    type="button"
-                    onClick={() => {
-                      track("testimonial_quote_cycle", {
-                        from: OUTCOMES[active].key,
-                        to: o.key,
-                      });
-                      setActive(i);
-                    }}
-                    aria-label={`Show outcome from ${o.archetype}`}
-                    aria-pressed={i === active}
-                    className={cn(
-                      "h-1.5 rounded-full transition-all",
-                      i === active
-                        ? "w-7 bg-brand"
-                        : "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/60"
-                    )}
-                  />
-                ))}
+
+              {/* Action row: pagination dots + share deep-link button */}
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-1.5" role="tablist" aria-label="Outcome selector">
+                  {OUTCOMES.map((o, i) => (
+                    <button
+                      key={o.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={i === active}
+                      onClick={() => setActiveTracked(i)}
+                      aria-label={`Show outcome from ${o.archetype}`}
+                      className={cn(
+                        "h-1.5 rounded-full transition-all",
+                        i === active
+                          ? "w-7 bg-brand"
+                          : "w-2 bg-muted-foreground/30 hover:bg-muted-foreground/60"
+                      )}
+                    />
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={copyDeepLink}
+                  className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-full border border-border/70 bg-background px-3 text-[11px] font-medium text-muted-foreground transition-colors hover:border-brand/40 hover:bg-brand-soft/20 hover:text-brand focus-visible:border-brand/40 focus-visible:bg-brand-soft/20 focus-visible:text-brand"
+                  aria-label={`Copy deep-link to this ${featured.archetype} outcome`}
+                  title="Copy a shareable link to this specific outcome"
+                >
+                  {copied ? (
+                    <>
+                      <CheckCheck className="h-3.5 w-3.5 text-growth" />
+                      <span className="text-growth">Link copied</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3.5 w-3.5" />
+                      <span>Copy link</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
 
@@ -256,41 +422,44 @@ export function OutcomesSection() {
 
         {/* Compact grid of the OTHER outcome cards (not the featured one) */}
         <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {others.map((o, i) => (
-            <button
-              key={o.key}
-              type="button"
-              onClick={() => {
-                track("testimonial_quote_cycle", {
-                  from: OUTCOMES[active].key,
-                  to: o.key,
-                });
-                setActive(OUTCOMES.findIndex((x) => x.key === o.key));
-              }}
-              aria-label={`Show outcome from ${o.archetype}`}
-              className={cn(
-                "group rounded-2xl border p-4 text-left transition-colors hover:border-brand/40 focus-visible:border-brand/40",
-                i % 2 === 0
-                  ? "border-border/70 bg-card/60 hover:bg-brand-soft/20"
-                  : "border-border/70 bg-card/60 hover:bg-growth/5",
-                reduced ? "" : "lift-on-hover"
-              )}
-            >
-              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                {o.archetype}
-              </div>
-              <div className="mt-1 text-xs font-medium text-foreground">
-                {o.role}
-              </div>
-              <div className="mt-2 line-clamp-3 text-[12px] leading-relaxed text-muted-foreground">
-                &ldquo;{o.quote}&rdquo;
-              </div>
-              <div className="mt-2 inline-flex items-center gap-1 text-[10px] font-medium text-brand opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-                Read in full
-                <ArrowRight className="h-3 w-3" />
-              </div>
-            </button>
-          ))}
+          {others.map((o, i) => {
+            const idx = OUTCOMES.findIndex((x) => x.key === o.key);
+            return (
+              <button
+                key={o.key}
+                type="button"
+                onClick={() => setActiveTracked(idx)}
+                onMouseMove={(e) => {
+                  const t = e.currentTarget;
+                  const r = t.getBoundingClientRect();
+                  t.style.setProperty("--x", `${e.clientX - r.left}px`);
+                  t.style.setProperty("--y", `${e.clientY - r.top}px`);
+                }}
+                aria-label={`Show outcome from ${o.archetype}`}
+                className={cn(
+                  "spotlight-glow group rounded-2xl border p-4 text-left transition-colors hover:border-brand/40 focus-visible:border-brand/40 focus-ring-tab",
+                  i % 2 === 0
+                    ? "border-border/70 bg-card/60 hover:bg-brand-soft/20"
+                    : "border-border/70 bg-card/60 hover:bg-growth/5",
+                  reduced ? "" : "lift-on-hover"
+                )}
+              >
+                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  {o.archetype}
+                </div>
+                <div className="mt-1 text-xs font-medium text-foreground">
+                  {o.role}
+                </div>
+                <div className="mt-2 line-clamp-3 text-[12px] leading-relaxed text-muted-foreground">
+                  &ldquo;{o.quote}&rdquo;
+                </div>
+                <div className="mt-2 inline-flex items-center gap-1 text-[10px] font-medium text-brand opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                  Read in full
+                  <ArrowRight className="h-3 w-3" />
+                </div>
+              </button>
+            );
+          })}
         </div>
 
         {/* CTA row */}
@@ -312,6 +481,15 @@ export function OutcomesSection() {
             className="inline-flex h-11 items-center gap-2 rounded-full border border-border/70 bg-background px-6 text-sm font-medium text-foreground transition-colors hover:border-brand/40 hover:bg-brand-soft/20"
           >
             Walk the patient journey
+          </button>
+          <button
+            type="button"
+            onClick={copyDeepLink}
+            className="inline-flex h-11 items-center gap-2 rounded-full border border-border/70 bg-background px-6 text-sm font-medium text-foreground transition-colors hover:border-brand/40 hover:bg-brand-soft/20"
+            aria-label="Copy deep-link to the currently featured outcome"
+          >
+            {copied ? <CheckCheck className="h-4 w-4 text-growth" /> : <Share2 className="h-4 w-4" />}
+            {copied ? "Link copied" : "Share this outcome"}
           </button>
           <span className="text-[11px] text-muted-foreground">
             30-minute private walkthrough · tailored to your organization

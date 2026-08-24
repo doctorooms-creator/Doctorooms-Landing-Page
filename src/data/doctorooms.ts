@@ -189,49 +189,72 @@ export const COMPARISON_ROWS = [
     fragmented: "A separate website or listings tool, or none at all",
     doctorooms: "Doctor, clinic & hospital profiles + online + video booking, built in",
     href: "#acquisition",
+    stage: "Discovery",
   },
   {
     dimension: "Queue & front desk",
     fragmented: "Standalone token display, manual sign-in, walk-in chaos",
     doctorooms: "Smart queue, live position, next-patient call, notifications",
     href: "#queue",
+    stage: "Front desk",
   },
   {
     dimension: "Consultation & EMR",
     fragmented: "A separate EMR, re-keyed from the booking system",
     doctorooms: "History, vitals, notes & AI-assisted prescription on one patient record",
     href: "#doctor",
+    stage: "Clinical",
   },
   {
     dimension: "Pharmacy & inventory",
     fragmented: "Pharmacy POS + a different inventory sheet + spreadsheets",
     doctorooms: "Dispensing, stock, batches, expiry & reorder on one platform",
     href: "#operations",
+    stage: "Operations",
   },
   {
     dimension: "Lab & diagnostics",
     fragmented: "Lab software that doesn't talk to the EMR or billing",
     doctorooms: "Orders → samples → results flow back into the chart automatically",
     href: "#operations",
+    stage: "Operations",
   },
   {
     dimension: "Billing & insurance",
     fragmented: "Billing tool + insurance desk + manual reconciliation",
     doctorooms: "Estimates, claims, receipts & reconciliation connected to every visit",
     href: "#operations",
+    stage: "Operations",
   },
   {
     dimension: "Reports & visibility",
     fragmented: "Exports stitched together in spreadsheets, always delayed",
     doctorooms: "Operational, clinical & financial views live across departments",
     href: "#operations",
+    stage: "Operations",
   },
   {
     dimension: "AI assistance",
     fragmented: "Not possible across disconnected tools",
     doctorooms: "Role-aware AI: intent → scoped data → draft action → confirmation",
     href: "#ai",
+    stage: "AI",
   },
+] as const;
+
+/**
+ * COMPARISON_STAGES — unique stage tags surfaced as filter chips above the
+ * comparison table. Lets a buyer focus on the slice of the journey they
+ * own (e.g. a growth lead can filter to "Discovery"; a COO can filter to
+ * "Operations"). "All" is always the default.
+ */
+export const COMPARISON_STAGES = [
+  "All",
+  "Discovery",
+  "Front desk",
+  "Clinical",
+  "Operations",
+  "AI",
 ] as const;
 
 export const COMPARISON_STATS = [

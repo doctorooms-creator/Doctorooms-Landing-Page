@@ -33,6 +33,12 @@ export type AnalyticsEvent =
   | "comparison_modal_share"
   | "glossary_inline_open"
   | "testimonial_quote_cycle"
+  | "outcome_deep_link"
+  | "outcome_modal_share"
+  | "outcome_journey_jump"
+  | "admin_mailto_open"
+  | "admin_export_breakdown"
+  | "comparison_filter_toggle"
   | "demo_form_success";
 
 type Payload = Record<string, string | number | boolean | undefined>;

@@ -107,6 +107,7 @@ export function HeroExperience() {
         <div className="aurora-blob bg-brand/40" style={{ width: 520, height: 520, top: -120, left: -80 }} />
         <div className="aurora-blob bg-growth/30" style={{ width: 460, height: 460, top: 40, right: -120 }} />
         <div className="absolute inset-0 bg-grid mask-fade-b opacity-60" />
+        <div className="hero-stripes absolute inset-0 opacity-70" />
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-background" />
       </div>
 

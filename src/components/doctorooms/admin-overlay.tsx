@@ -32,10 +32,12 @@ import {
   CheckCircle2,
   ClipboardCopy,
   Clock,
+  Download,
   ExternalLink,
   Inbox,
   Loader2,
   Mail,
+  MailOpen,
   Phone,
   Pencil,
   RefreshCw,
@@ -61,8 +63,8 @@ import {
  *   • Inline note editing (PATCH { note }) — team-side context per lead
  *   • Status changes inline (PATCH { status }) — triage workflow
  *   • Batch select + delete (DELETE ?ids=...) for cleanup
- *   • Per-row Copy email (clipboard) + bulk Copy selected emails
- *   • Export filtered rows to CSV
+ *   • Per-row Copy email + Open mailto (pre-filled compose) + bulk Copy selected emails
+ *   • Export filtered rows to CSV (flat) or by-status (grouped w/ status column)
  *   • KPI counts at a glance — click a KPI to filter by that status
  *
  * Reduced-motion safe (CSS only). No auth in this demo sandbox; the
@@ -427,6 +429,61 @@ export function AdminOverlay({
     URL.revokeObjectURL(url);
   }
 
+  // Per-status breakdown export — generates ONE CSV with all filtered rows
+  // and a "status" column (instead of separate files per status). The
+  // rows are grouped by status so the team can pivot / sort in Excel.
+  // Tracks `admin_export_breakdown { count }` for analytics.
+  function exportCsvByStatus() {
+    if (filtered.length === 0) return;
+    track("admin_export_breakdown", { count: filtered.length });
+    const header = ["status", "name", "email", "phone", "org", "orgType", "size", "createdAt", "note"];
+    // Sort: by status (alpha) then by createdAt DESC within each group.
+    const grouped = [...filtered].sort((a, b) => {
+      if (a.status !== b.status) return a.status.localeCompare(b.status);
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+    const lines = grouped.map((r) =>
+      [
+        r.status,
+        r.name,
+        r.email,
+        r.phone ?? "",
+        r.org,
+        r.orgType ?? "",
+        r.size ?? "",
+        new Date(r.createdAt).toISOString(),
+        r.note ?? "",
+      ]
+        .map(escapeCsv)
+        .join(",")
+    );
+    const csv = [header.join(","), ...lines].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `doctorooms-demo-breakdown-${new Date()
+      .toISOString()
+      .slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  // Open the row's email in a new mailto compose window. Avoids the
+  // 2-step "copy then paste" loop. Tracks `admin_mailto_open { id }`.
+  function openMailto(r: Row) {
+    track("admin_mailto_open", { id: r.id });
+    const subject = encodeURIComponent(
+      `Doctorooms demo — next steps for ${r.org}`
+    );
+    const body = encodeURIComponent(
+      `Hi ${r.name},\n\nThanks for reaching out about Doctorooms. I'd love to walk you through the platform at a time that works for you.\n\nBest,\n`
+    );
+    window.location.href = `mailto:${r.email}?subject=${subject}&body=${body}`;
+  }
+
   // Copy a single row's email to clipboard. Falls back to a hidden
   // textarea + execCommand for non-secure-context browsers. Briefly
   // flips the row's "Copy" button to a checkmark for visual feedback.
@@ -616,9 +673,22 @@ export function AdminOverlay({
               onClick={exportCsv}
               disabled={filtered.length === 0}
               className="h-9"
+              title="Export filtered rows as a flat CSV"
             >
               <ExternalLink className="h-3.5 w-3.5" />
               Export CSV
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={exportCsvByStatus}
+              disabled={filtered.length === 0}
+              className="h-9"
+              title="Export filtered rows grouped by status (one CSV with a status column)"
+            >
+              <Download className="h-3.5 w-3.5" />
+              By status
             </Button>
             <div className="ml-auto hidden items-center gap-1.5 text-[11px] text-muted-foreground sm:flex">
               <Users className="h-3 w-3" />
@@ -817,11 +887,20 @@ export function AdminOverlay({
                               </a>
                               <button
                                 type="button"
+                                onClick={() => openMailto(r)}
+                                aria-label={`Open mailto compose for ${r.email}`}
+                                title="Open mailto"
+                                className="ml-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-transparent text-muted-foreground/70 transition-colors hover:border-border/60 hover:bg-muted/40 hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand"
+                              >
+                                <MailOpen className="h-3 w-3" />
+                              </button>
+                              <button
+                                type="button"
                                 onClick={() => void copyEmail(r)}
                                 aria-label={`Copy ${r.email} to clipboard`}
                                 title="Copy email"
                                 className={cn(
-                                  "ml-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-transparent transition-colors",
+                                  "ml-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-transparent transition-colors",
                                   copiedId === r.id
                                     ? "text-growth"
                                     : "text-muted-foreground/70 hover:border-border/60 hover:bg-muted/40 hover:text-brand"

@@ -597,7 +597,200 @@
   100% { opacity: 1; transform: translateY(0); }
 }
 
-/* Tailwind v4 force-recompile marker — content shift triggers a full
+/* === Round 19 additions — premium micro-affordances + visual rhythm === */
+
+/* Spotlight-glow — a soft radial brand/growth wash that follows the
+   pointer position over interactive surfaces. Applied to premium cards
+   via the `:hover` pseudo-class so it fades in only when the user
+   intends to engage. Reduced-motion safe (CSS opacity transition only,
+   no movement). */
+.spotlight-glow {
+  position: relative;
+  isolation: isolate;
+}
+.spotlight-glow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: 0;
+  background:
+    radial-gradient(
+      220px circle at var(--x, 50%) var(--y, 50%),
+      oklch(0.55 0.12 188 / 0.16),
+      transparent 65%
+    );
+  transition: opacity 240ms ease-out;
+  z-index: 0;
+}
+.spotlight-glow:hover::before,
+.spotlight-glow:focus-visible::before {
+  opacity: 1;
+}
+.spotlight-glow > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Ribbon-stripe — a 2px horizontal accent strip with a brand→growth
+   diagonal sweep. Used at the top of premium chapter headers + ROI
+   output to signal "verified / authenticated / connected" sections. */
+.ribbon-stripe {
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    oklch(0.55 0.12 188 / 0.9) 0%,
+    oklch(0.65 0.14 165 / 0.9) 50%,
+    oklch(0.55 0.12 188 / 0.0) 100%
+  );
+  border: 0;
+}
+
+/* Ticker-quote — vertical bars that scroll to the right inside a
+   contained rail. Used on the outcomes carousel eyebrow row as a
+   subtle "live data" affordance. Reduced-motion: animation disabled
+   globally. */
+.ticker-quote {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.ticker-quote::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    transparent 70%,
+    oklch(1 0 0 / 0.7) 100%
+  );
+}
+.ticker-quote > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding-right: 2rem;
+  animation: ticker-quote-scroll 9s linear infinite;
+}
+@keyframes ticker-quote-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* Kbd-chip — a refined keyboard shortcut chip with a subtle inner
+   shadow + bottom highlight. Replaces the default browser-rendered
+   <kbd> look so shortcut hints feel consistent across platforms. */
+.kbd-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.4rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: oklch(0.4 0 0 / 0.85);
+  background: oklch(0.96 0.005 240);
+  border: 1px solid oklch(0.85 0.02 240);
+  border-bottom: 2px solid oklch(0.78 0.02 240);
+  border-radius: 0.375rem;
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.6),
+    0 1px 0 oklch(0 0 0 / 0.04);
+  user-select: none;
+}
+
+/* Marker-tick — a small ✓-style dot rendered as a CSS-only marker for
+   checklists. Used inside the ROI drivers list + comparison rows to
+   replace the generic `•` bullet with a premium brand-tinted tick. */
+.marker-tick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  margin-right: 0.5rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: oklch(0.55 0.12 188 / 0.14);
+  color: oklch(0.55 0.12 188);
+  font-size: 0.7rem;
+  line-height: 1;
+  font-weight: 800;
+}
+.marker-tick.growth {
+  background: oklch(0.65 0.14 165 / 0.16);
+  color: oklch(0.65 0.14 165);
+}
+.marker-tick::before {
+  content: "✓";
+}
+
+/* Quote-arc — a decorative quotation mark arc rendered as a thin SVG
+   underline beneath the featured blockquote. Pure CSS gradient mask
+   so it scales with container width without needing an <svg> element. */
+.quote-arc {
+  height: 3px;
+  width: 64px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    90deg,
+    oklch(0.55 0.12 188 / 0.7),
+    oklch(0.65 0.14 165 / 0.7) 60%,
+    transparent
+  );
+}
+
+/* Hero-stripes — subtle diagonal background pattern for the hero chapter.
+   Layered above the radial brand/growth wash to add visual texture
+   without competing with the headline. */
+.hero-stripes {
+  background-image:
+    repeating-linear-gradient(
+      115deg,
+      transparent,
+      transparent 80px,
+      oklch(0.55 0.12 188 / 0.025) 80px,
+      oklch(0.55 0.12 188 / 0.025) 81px
+    );
+  background-position: center;
+}
+
+/* Focus-ring-tab — keyboard-only focus indicator for tabs/pagination
+   dots that are normally flat. Uses a subtle outline + offset so
+   keyboard users see clear focus without affecting mouse users. */
+.focus-ring-tab:focus-visible {
+  outline: 2px solid oklch(0.55 0.12 188);
+  outline-offset: 4px;
+  border-radius: 9999px;
+}
+
+/* Live-indicator-dot — a small pulsing dot that signals "live"/"active"
+   state. Used on the ROI live indicator + admin overlay live badge.
+   Reduced-motion: pulse disabled globally. */
+.live-indicator-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: oklch(0.65 0.14 165);
+  box-shadow: 0 0 0 0 oklch(0.65 0.14 165 / 0.6);
+  animation: live-indicator-pulse 2s ease-out infinite;
+}
+@keyframes live-indicator-pulse {
+  0% { box-shadow: 0 0 0 0 oklch(0.65 0.14 165 / 0.6); }
+  70% { box-shadow: 0 0 0 8px oklch(0.65 0.14 165 / 0); }
+  100% { box-shadow: 0 0 0 0 oklch(0.65 0.14 165 / 0); }
+}
+
+/* Tailwind v4 force-recompile marker (round 19) — content shift triggers a full
    Lightning CSS re-emit so the utility rules above reliably appear in
    the production bundle (works around Turbopack's incremental cache). */
+
 

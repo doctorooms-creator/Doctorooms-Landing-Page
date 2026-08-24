@@ -10,6 +10,7 @@ import { useReveal } from "@/lib/anim/hooks";
 import { track } from "@/lib/analytics";
 import { ROI_DRIVERS, ROI_DISCLAIMER } from "@/data/doctorooms";
 import { useDemoDialog } from "./demo-dialog";
+import { cn } from "@/lib/utils";
 import { ArrowRight, Info, TrendingUp, Users, Video } from "lucide-react";
 
 type InputKey = "patients" | "revenue" | "efficiency" | "ai";
@@ -250,12 +251,18 @@ export function ROICalculator() {
                 Value drivers
               </div>
               <div className="mt-2.5 flex flex-wrap gap-1.5">
-                {ROI_DRIVERS.map((d) => (
+                {ROI_DRIVERS.map((d, i) => (
                   <span
                     key={d.key}
                     title={d.desc}
-                    className="inline-flex items-center rounded-full border border-border/70 bg-card px-2.5 py-1 text-[11px] font-medium text-foreground/80"
+                    className={cn(
+                      "inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium",
+                      i % 3 === 1
+                        ? "border-growth/30 bg-growth/[0.06] text-foreground/80"
+                        : "border-brand/30 bg-brand/[0.06] text-foreground/80"
+                    )}
                   >
+                    <span className={cn("marker-tick", i % 3 === 1 ? "growth" : "")} aria-hidden />
                     {d.label}
                   </span>
                 ))}
