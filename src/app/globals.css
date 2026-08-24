@@ -379,6 +379,7 @@
     .shimmer { animation: none !important; }
     [data-anim] { opacity: 1 !important; transform: none !important; }
     [data-hero-step], [data-hero-ui], [data-hero-ai] { opacity: 1 !important; transform: none !important; }
+    [data-frag], [data-converged] { opacity: 1 !important; transform: none !important; }
   }
 
   /*
@@ -401,6 +402,27 @@
   html.js [data-hero-step],
   html.js [data-hero-ui],
   html.js [data-hero-ai] {
+    opacity: 0;
+  }
+
+  /*
+   * FOUC safety net for the ProblemConvergence section.
+   *
+   * The "02 The Problem" chapter has 10 [data-frag] fragment cards that
+   * are all positioned at the exact same center point (left-1/2 top-1/2
+   * with identical marginLeft/marginTop). Before GSAP runs, these 10
+   * glass cards stack perfectly on top of each other, creating a bright
+   * white blob in the center of the stage — the "blank white shape" the
+   * user reported. GSAP scatters + hides them on mount via gsap.set(),
+   * but during the SSR→hydration gap (~1s) the stacked fragments are
+   * visible. This rule pre-hides them when JS is enabled. The [data-converged]
+   * platform card is also pre-hidden (GSAP starts it at opacity:0+scale:0.9).
+   *
+   * GSAP's .set() + .to() (explicit values) correctly overrides this CSS
+   * — no .from() conflict here since ProblemConvergence uses .set()/.to().
+   */
+  html.js [data-frag],
+  html.js [data-converged] {
     opacity: 0;
   }
 }
