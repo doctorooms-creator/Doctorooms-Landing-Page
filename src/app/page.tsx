@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { DemoDialogProvider } from "@/components/doctorooms/demo-dialog";
+import { GlossaryProvider } from "@/components/doctorooms/glossary-context";
 import { SiteHeader } from "@/components/doctorooms/site-header";
 import { SiteFooter } from "@/components/doctorooms/site-footer";
 import { HeroExperience } from "@/components/doctorooms/hero-experience";
@@ -62,6 +63,7 @@ const RoleOrbit = dynamic(
 export default function Home() {
   return (
     <DemoDialogProvider>
+      <GlossaryProvider>
       <div className="relative flex min-h-screen flex-col">
         {/* Global scroll progress + chapter navigator */}
         <ScrollProgress />
@@ -141,6 +143,7 @@ export default function Home() {
         <BackToTop />
         <MobileStickyCTA />
       </div>
+      </GlossaryProvider>
     </DemoDialogProvider>
   );
 }

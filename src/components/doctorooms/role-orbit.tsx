@@ -169,7 +169,7 @@ export function RoleOrbit() {
                   }}
                 >
                   <div
-                    className="group flex w-[140px] flex-col items-center gap-2 rounded-2xl border border-border/70 bg-card p-3 text-center shadow-md transition-all duration-300 hover:-translate-y-1 hover:border-brand/40 hover:shadow-lg"
+                    className="lift-on-hover group flex w-[140px] flex-col items-center gap-2 rounded-2xl border border-border/70 bg-card p-3 text-center shadow-md hover:border-brand/40 hover:shadow-lg"
                     title={`${role.key} — ${role.desc}`}
                   >
                     <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-soft text-brand transition group-hover:scale-105">
@@ -200,7 +200,7 @@ export function RoleOrbit() {
                 <div
                   key={role.key}
                   data-anim
-                  className="group flex flex-col gap-3 rounded-2xl border border-border/70 bg-card p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-brand/40 hover:shadow-lg"
+                  className="lift-on-hover group flex flex-col gap-3 rounded-2xl border border-border/70 bg-card p-4 shadow-sm hover:border-brand/40 hover:shadow-lg"
                 >
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-soft text-brand transition group-hover:scale-105">
                     <Icon className="h-4 w-4" />

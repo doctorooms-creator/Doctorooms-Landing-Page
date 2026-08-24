@@ -13,6 +13,7 @@ import { track } from "@/lib/analytics";
 import { AI_ROLES } from "@/data/doctorooms";
 import { Chip, LiveDot } from "./ui/chip";
 import { ProductFrame } from "./ui/product-frame";
+import { GlossaryTerm } from "./glossary-context";
 import { AI_ROLE_ICONS, Icon } from "./ui/icons";
 import {
   Check,
@@ -179,9 +180,12 @@ export function AIAgentExperience() {
             className="mx-auto mt-5 max-w-2xl text-pretty text-muted-foreground sm:text-lg"
             data-anim
           >
-            Natural language → intent → role-aware data access → answer and/or
-            action → confirmation where appropriate. Role-aware and constrained
-            by authorization. Type a prompt or just talk.
+            Natural language → intent →{" "}
+            <GlossaryTerm term="AI agent">role-aware</GlossaryTerm> data access
+            → answer and/or action → confirmation where appropriate. Constrained
+            by <GlossaryTerm term="RBAC">authorization</GlossaryTerm> and{" "}
+            <GlossaryTerm term="Audit">audited</GlossaryTerm>. Type a prompt or
+            just talk.
           </p>
         </div>
 

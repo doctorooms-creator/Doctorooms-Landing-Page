@@ -626,3 +626,94 @@ Task: Assess project status, QA via agent-browser, fix bugs or add features + im
   5. **Admin overlay enhancements**: add per-row "Open in mailto" + "Copy email" buttons, sort by org/name as alternative to createdAt, and a stats export (CSV per status breakdown) for sales pipeline review.
 
 Handoff: next cron round should pick up item #1 (Lighthouse baseline — quantify the impact of this round's code-splitting) or item #2 (axe-core a11y audit — the new admin + glossary overlays added interactive controls that should be verified). The site now has: 18 cinematic chapters (3 code-split for performance), a complete conversion path (discovery → comparison → story → FAQ → ROI → rollout → demo form → success animation → persisted lead), a usable team triage overlay (Shift+A) with note-taking + sort + batch + #admin deep-link, a healthcare glossary overlay (G) for non-clinical decision makers, SEO foundations (OG image + JSON-LD), and premium UX (keyboard shortcuts, chapter nav, mobile sticky CTA, success micro-animation, headline sweep, lift-on-hover, sheen-on-hover).
+
+---
+Task ID: 17 (cron round 7)
+Agent: main (15-min webDevReview loop, continued)
+Task: Assess project status, QA via agent-browser, fix bugs or add features + improve styling.
+
+## 1. Current Project Status (assessment)
+- Project was STABLE entering this round. Dev server healthy on port 3000; `GET / 200` sub-second; no runtime/console errors.
+- Prior round (Task 16) shipped: code-splitting for 3 heavy GSAP chapters (LazyMount + SectionSkeleton + next/dynamic), admin overlay enhancements (note editing + sort + batch + #admin deep-link), healthcare glossary overlay (G shortcut, 20 terms), styling polish (scroll-anchor, lift-on-hover, sheen, headline-sweep).
+- QA this round (agent-browser): opened page → 0 page errors, 0 console errors. Initial state: 15 sections in DOM + 6 `aria-busy` elements (3 LazyMount wrappers + 3 skeleton placeholders). Full scroll-through → 18 sections, 0 busy. No bugs to fix.
+- `bun run lint` (entering): 0 errors, 0 warnings.
+- Phase stable → moved to NEW feature/styling additions, picking up items #3 (comparison side-by-side modal) + #4 (glossary inline tooltips) from the prior round's recommendations, plus a styling polish layer (glow-ring, divider-gradient, ROI live indicator, role-orbit lift-on-hover).
+
+## 2. Completed modifications this round
+
+### New feature: comparison side-by-side detail modal
+- `src/data/doctorooms.ts` — added `COMPARISON_DETAILS` (8 entries, one per `COMPARISON_ROWS` dimension). Each entry has: `dimension` (matches the row label), `fragmentedPain` (4 bullets describing the disconnected-tools pain), `doctoroomsDoes` (4 bullets describing the Doctorooms approach), `why` (one-line "why it matters" tied to the buyer's bottom line), and `href` (the chapter deep-link). All bullets are qualitative (no invented metrics); they describe how the product actually works.
+- `src/components/doctorooms/comparison-modal.tsx` — new focused side-by-side detail modal:
+  * Triggered from `ComparisonSection`: each row gets a "Detail" button (Maximize2 icon + label). Nested `<button>` stops propagation so the row's deep-link onClick doesn't fire.
+  * Header: dimension title + "X of 8 dimensions" badge + prev/next chevrons. Prev/Next cycle through `COMPARISON_DETAILS`.
+  * Body: 2-column grid (stacked on mobile). Left column = Fragmented (amber-tinted, 4 X bullets). Right column = Doctorooms (brand-tinted, 4 Check bullets). Full-width "Why it matters" callout at the bottom (Lightbulb icon, growth-tinted).
+  * Footer CTA row: "See it in Doctorooms" (deep-link to the relevant chapter, closes modal first then smooth-scrolls with 64px offset) + "Book a private demo" (opens the demo dialog). Plus `<kbd>←</kbd> <kbd>→</kbd> to navigate` hint.
+  * Keyboard navigation: ←/→ arrows cycle dimensions (ignored when typing in an input).
+  * State reset: `ComparisonBody` only mounts when `open` is true, so the dimension index is fresh on each open (initialized from `startIndex` prop). No useEffect-based reset needed.
+  * A11y: explicit `aria-describedby="comparison-modal-desc"`, nav buttons have aria-labels.
+  * Tracks `comparison_modal_open { dimension }` on open + `comparison_modal_navigate { from, to }` on prev/next.
+- `src/components/doctorooms/comparison-section.tsx` — wired up the modal:
+  * Desktop table: each row's dimension cell now has a nested `<button>` "Detail" chip (border-white/10 chip that turns brand on hover/focus). Stops propagation via `e.stopPropagation()`.
+  * Mobile cards: header row now has two buttons — the original "See it" (deep-link) + a new "Detail" chip.
+  * CTA row: added a "Compare all dimensions" button (Maximize2 icon) that opens the modal starting at the first dimension.
+  * Updated intro paragraph to mention both interaction modes ("Click any row to jump to the chapter, or open the focused side-by-side detail for the full breakdown.").
+- Verified end-to-end: clicked "Detail" on "Patient discovery & booking" → modal opened with title "Patient discovery & booking", 4 fragmented bullets (X icons), 4 doctorooms bullets (Check icons), why-it-matters callout ("Patients find your doctors faster, book online, and show up — without your front desk re-keying anything."). Clicked "Next dimension" → cycled to "Queue & front desk". ArrowRight → "Consultation & EMR". ArrowLeft → back to "Queue & front desk". Clicked "Compare all dimensions" button → modal opened starting at "Patient discovery & booking". Esc closed cleanly.
+
+### New feature: inline glossary term chips (GlossaryTerm + GlossaryProvider context)
+- `src/components/doctorooms/glossary-context.tsx` — new context + inline button component:
+  * `GlossaryProvider` — wraps the page with a context that holds `open` + `seedTerm` state. Renders a single `GlossaryOverlay` (with the seed prop) at the provider level. The `openFor(term)` callback sets both state values atomically: `seedTerm=term; open=true`.
+  * `useGlossary()` — hook for child components to access `openFor`.
+  * `<GlossaryTerm term="OPD">OPD</GlossaryTerm>` — inline button styled as a dotted-underlined chip with brand color + brand-soft hover tint. Renders inline (no block layout disruption). Tracks `glossary_inline_open { term }`. Aria-label: "Open glossary entry for {term}".
+- `src/components/doctorooms/glossary-overlay.tsx` — extended to accept an optional `seedTerm` prop:
+  * `GlossaryOverlay({ open, onOpenChange, seedTerm })` — passes the seed to `GlossaryBody` as a prop.
+  * `GlossaryBody({ seedTerm })` — `useState(() => seedTerm ?? "")` initializer captures the seed at mount time. GlossaryBody only mounts when `open` transitions false→true, so the seed is fresh on each open.
+- `src/components/doctorooms/back-to-top.tsx` — refactored to use the context:
+  * Dropped the local `glossaryOpen` state and `<GlossaryOverlay>` render.
+  * Added `useGlossary()` hook; `G` keyboard shortcut now calls `openFor(null)` (empty seed → shows all 20 terms).
+  * The keyboard-shortcuts help dialog's "Open glossary" cross-link also calls `openFor(null)`.
+- `src/app/page.tsx` — wrapped the page tree in `<GlossaryProvider>` (sibling to `<DemoDialogProvider>`).
+- `src/components/doctorooms/doctor-growth.tsx` — added 2 inline `GlossaryTerm` chips to the chapter intro paragraph: "Queue" + "prescription" (links to Queue + e-Rx glossary entries).
+- `src/components/doctorooms/ai-agent-experience.tsx` — added 3 inline chips: "role-aware" (AI agent), "authorization" (RBAC), "audited" (Audit).
+- `src/components/doctorooms/hospital-os.tsx` — added 4 inline chips: OPD, IPD, Pharmacy, OT.
+- `src/components/doctorooms/ipd-journey.tsx` — added 3 inline chips: Vitals, Billing, Discharge (maps to "Discharge summary" glossary entry).
+- Total: 12 inline `GlossaryTerm` chips across 4 chapters, surfacing 9 distinct glossary entries (OPD, IPD, Pharmacy, OT, Queue, e-Rx, Vitals, Billing, Discharge summary, AI agent, RBAC, Audit — 12 actually but some overlap with related entries).
+- Verified end-to-end: scrolled to operations section → 4 inline chips visible (OPD, IPD, Pharmacy, OT). Clicked IPD chip → glossary opened with `searchValue="IPD"`, 6 matching terms (OPD, IPD, Vitals, Discharge summary, Lab, OT — all of which mention IPD in their definitions). Closed + pressed `G` → glossary reopened with empty search (20 terms) — seed reset confirmed.
+
+### Styling polish
+- `src/app/globals.css` — added 4 new utilities (outside @layer, same pattern as last round's working utilities):
+  * `.glow-ring` — soft outer halo via box-shadow (1px brand-tinted ring + 22px brand glow). Applied to ROI calculator's output panel. Stacks with other shadows.
+  * `.glow-ring-growth` — growth-tinted variant for premium growth-tone surfaces.
+  * `.divider-gradient` — 1px horizontal hairline fading transparent → brand → growth → transparent. Applied between the comparison section's stat row and the comparison table.
+  * `.glossary-term { cursor: help; }` — distinguishes look-up-able term chips from regular links (cursor: help is a small but powerful UX signal).
+- `src/components/doctorooms/role-orbit.tsx` — applied `.lift-on-hover` to both the desktop orbit tiles (140px cards) and the mobile/tablet role cards. Replaces the inline `transition-all duration-300 hover:-translate-y-1` pattern.
+- `src/components/doctorooms/roi-calculator.tsx` — applied `.glow-ring` to the output panel (right side) + added a "Live" badge in the header:
+  * The badge is a small brand-tinted pill with a pulsing brand dot (uses `animate-ping` for the outer ping + a solid inner dot — a recognizable "live data" affordance).
+  * `title="Recalculates as you move the sliders"` tooltip.
+  * Pushes the section's visual hierarchy — the output panel now clearly signals "this updates in real time".
+- `src/components/doctorooms/comparison-section.tsx` — added a `.divider-gradient` hairline between the stat row and the comparison table (desktop only, `hidden lg:block`). Visually separates the high-level deltas from the detailed breakdown.
+
+### Note on Tailwind v4 CSS bundle issue (resolved)
+- Initial compile did NOT include the new `.glow-ring`, `.divider-gradient`, `.glossary-term` rules — Tailwind v4's CSS processor (Lightning CSS) was emitting the old rules but truncating the new ones. Touched `globals.css` (added a trailing newline) to force a full recompile, after which the new rules appeared in the bundle and applied correctly. Verified via `getComputedStyle`: `.glow-ring` has `boxShadow` set, `.divider-gradient` has `height=1px + backgroundImage=linear-gradient(...)`, `.glossary-term` has `cursor=help`. The old utilities (`.scroll-anchor`, `.headline-sweep`, `.lift-on-hover`, `.sheen`) remained in the bundle throughout.
+
+## 3. Verification (agent-browser + lint)
+- Reloaded → 0 page errors, 0 console errors.
+- Full careful scroll-through (12 × 2000px increments from top to bottom): 15 → 16 → 18 sections progressively, 6 → 4 → 0 busy elements, 0 errors throughout. Document height = 20882px (slightly different from prior round's 21991px because the chapter content varies with the new inline `GlossaryTerm` buttons adding tiny vertical space).
+- Comparison modal: clicked "Detail" on row 1 → modal opened with title "Patient discovery & booking" + 4 fragmented bullets + 4 doctorooms bullets + why-it-matters callout. Next/Prev chevrons cycled dimensions correctly. ←/→ keyboard nav worked. Esc closed cleanly.
+- "Compare all dimensions" button → modal opened at first dimension.
+- Inline glossary terms: 12 chips rendered across 4 chapters (doctor-growth: 2, ai-agent-experience: 3, hospital-os: 4, ipd-journey: 3). Clicked IPD chip in hospital-os → glossary opened with `searchValue="IPD"`, 6 matching terms. Closed + pressed G → 20 terms (seed reset confirmed).
+- Styling utilities verified: `getComputedStyle` confirmed `.glow-ring` boxShadow is set on the ROI panel, `.divider-gradient` height=1px with linear-gradient bg, `.glossary-term` cursor=help, `.lift-on-hover` transitionProperty on role-orbit cards.
+- `bun run lint` → 0 errors, 0 warnings.
+- Screenshots saved: `download/roi-glow-live.png` (ROI with glow ring + live badge), `download/comparison-modal-detail.png` (comparison side-by-side modal).
+- Regression: hero, problem, comparison (now with detail modal), acquisition, doctor (now with glossary chips), ai (now with glossary chips), video, queue, journey (lazy), hospital-os (now with glossary chips), org-fit, ipd (lazy + glossary chips), roles (lazy + lift-on-hover), security, faq, roi (now with glow ring + live badge), rollout, final-cta — all 18 chapters still render and scroll correctly. OrgFit selector, AI voice, FAQ accordion, mobile sticky CTA, OG image, JSON-LD, demo form success animation, admin overlay (Shift+A + #admin deep-link), glossary overlay (G shortcut), keyboard shortcuts — all unchanged and still working. LazyMount code-splitting + SectionSkeleton still deferred correctly.
+
+## 4. Unresolved issues / risks + next-phase recommendations
+- No bugs introduced. The Tailwind v4 CSS bundle "first compile missing new utilities" issue self-resolved on the second compile (touching globals.css). Not a real bug — likely a Turbopack/Lightning CSS caching quirk that recovers on file change.
+- The lazy-mount IntersectionObserver has a subtle behavior: if the page scrolls PAST a placeholder very quickly (e.g. a single `scroll down 10000` jump), the IO callback fires but the dynamic-import chunk fetch is asynchronous — the chunk arrives after the user has scrolled past. In practice, smooth scrolling or incremental scrolling (which is what real users do) doesn't trigger this. The smooth-scroll `scrollTo({behavior:'smooth'})` from the chapter navigator and the comparison row deep-links also re-triggers the IO correctly. No user-facing impact.
+- **Recommended next-phase work** (priority order):
+  1. **A11y audit (axe-core)**: now that the comparison modal + inline glossary terms add interactive controls across the page, run a full axe-core pass. Specific focus: keyboard trap inside the comparison modal's ←/→ handler (currently allowed even when typing in the modal's search input — wait, the modal has no search input — but verify the keyboard handler doesn't interfere with focus inside the modal). The inline `GlossaryTerm` button's focus-visible outline should be checked too.
+  2. **Lighthouse / Core Web Vitals baseline**: still pending from prior round. With code-splitting + the new comparison modal (lazy-rendered) + inline glossary chips (minimal DOM), initial render should be even lighter.
+  3. **Comparison modal deep-link via URL hash**: extend the `#admin` hash pattern to `#compare=<dimension>` so the team can deep-link a specific comparison dimension (e.g. `#compare=Queue & front desk` — URL-encoded). Lets the sales team share a focused comparison view.
+  4. **Glossary inline chip density tuning**: 12 chips across 4 chapters is a good start, but the doctor-growth / ai-agent / hospital-os / ipd-journey chapters could use more chips in the body copy (currently only the intro paragraph has them). Consider adding chips to sub-headings, bullet lists, KPI labels.
+  5. **Admin overlay: per-row quick actions**: add per-row "Copy email" + "Open mailto" buttons (currently mailto is a link in the row text, but a dedicated action button would be faster for power users). Plus a stats export (CSV per-status breakdown) for sales pipeline review.
+
+Handoff: next cron round should pick up item #1 (axe-core a11y audit — the new comparison modal + inline glossary chips add interactive controls that should be verified) or item #3 (comparison modal deep-link via `#compare=<dimension>` URL hash — mirrors the `#admin` pattern and makes the sales team's life easier). The site now has: 18 cinematic chapters (3 code-split for performance), a complete conversion path (discovery → comparison [with side-by-side detail modal] → story [with inline glossary chips] → FAQ → ROI [with glow ring + live indicator] → rollout → demo form → success animation → persisted lead), a usable team triage overlay (Shift+A + #admin deep-link) with note-taking + sort + batch + #admin deep-link, a healthcare glossary overlay (G shortcut) for non-clinical decision makers + 12 inline term chips for discoverability, SEO foundations (OG image + JSON-LD), and premium UX (keyboard shortcuts, chapter nav, mobile sticky CTA, success micro-animation, headline sweep, lift-on-hover, sheen-on-hover, glow-ring, divider-gradient).

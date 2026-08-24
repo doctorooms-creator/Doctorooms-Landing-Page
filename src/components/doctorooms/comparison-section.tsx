@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -9,7 +9,8 @@ import { useReducedMotion } from "@/lib/anim/gsap-register";
 import { track } from "@/lib/analytics";
 import { COMPARISON_ROWS, COMPARISON_STATS } from "@/data/doctorooms";
 import { useDemoDialog } from "./demo-dialog";
-import { ArrowRight, Check, Layers, Unplug, X } from "lucide-react";
+import { ComparisonModal } from "./comparison-modal";
+import { ArrowRight, Check, Layers, Maximize2, Unplug, X } from "lucide-react";
 
 /**
  * ComparisonSection — Chapter 02½ "Fragmented vs. one platform".
@@ -21,6 +22,9 @@ import { ArrowRight, Check, Layers, Unplug, X } from "lucide-react";
  * Layout: dark `ink-section` continuing the Problem chapter's cinematic
  * backdrop. Top stat row (3 deltas). Comparison body = 3-col grid on
  * lg (dimension | fragmented | doctorooms); stacked cards on mobile.
+ * Each row is clickable to deep-link to the relevant chapter. Each row
+ * ALSO has a "Compare in detail" affordance that opens a focused modal
+ * with fragmented-pain / doctorooms-does / why-it-matters bullets.
  * Reduced-motion safe (CSS-revealed, framer only for entrance fade).
  */
 export function ComparisonSection() {
@@ -29,6 +33,8 @@ export function ComparisonSection() {
   useReveal(root, { stagger: 0.08, duration: 0.8 });
   useScrollTriggerHygiene();
   const { open } = useDemoDialog();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalDimension, setModalDimension] = useState<string | null>(null);
 
   // Smooth-scroll to the chapter a comparison row maps to, with the same
   // 64px sticky-header offset the rest of the site uses.
@@ -38,6 +44,16 @@ export function ComparisonSection() {
     if (!el) return;
     const top = (el as HTMLElement).getBoundingClientRect().top + window.scrollY - 64;
     window.scrollTo({ top, behavior: "smooth" });
+  }
+
+  // Open the focused side-by-side modal for a specific dimension. Stops
+  // propagation so the row's deep-link onClick doesn't also fire.
+  function openModalFor(dimension: string, e?: React.MouseEvent) {
+    e?.preventDefault();
+    e?.stopPropagation();
+    track("comparison_modal_open", { dimension });
+    setModalDimension(dimension);
+    setModalOpen(true);
   }
 
   return (
@@ -75,7 +91,8 @@ export function ComparisonSection() {
           >
             The same patient journey, handled two ways. On the left, what a
             fragmented stack looks like across each step. On the right, what
-            Doctorooms does in one place.
+            Doctorooms does in one place. Click any row to jump to the chapter,
+            or open the focused side-by-side detail for the full breakdown.
           </p>
         </div>
 
@@ -105,6 +122,12 @@ export function ComparisonSection() {
           ))}
         </div>
 
+        {/* Divider hairline — brand→growth fade between the stat row
+            and the comparison table. */}
+        <div className="mx-auto mt-12 hidden max-w-4xl lg:block" aria-hidden>
+          <div className="divider-gradient" />
+        </div>
+
         {/* Comparison table (desktop) */}
         <div className="mt-12 hidden lg:block" data-anim>
           <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] backdrop-blur-sm">
@@ -122,7 +145,9 @@ export function ComparisonSection() {
                 Doctorooms
               </div>
             </div>
-            {/* Rows — clickable, deep-link to the relevant chapter */}
+            {/* Rows — clickable, deep-link to the relevant chapter.
+                The dimension cell also has a nested "Compare in detail"
+                button (stops propagation) that opens the focused modal. */}
             {COMPARISON_ROWS.map((row, i) => (
               <motion.button
                 type="button"
@@ -141,6 +166,16 @@ export function ComparisonSection() {
                 <div className="col-span-3 flex items-center gap-1.5 text-sm font-medium text-ink-foreground">
                   <span>{row.dimension}</span>
                   <ArrowRight className="h-3 w-3 shrink-0 text-brand opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100" />
+                  <button
+                    type="button"
+                    onClick={(e) => openModalFor(row.dimension, e)}
+                    className="ml-1 inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-medium text-ink-muted transition-colors hover:border-brand/40 hover:bg-brand-soft/30 hover:text-brand focus-visible:border-brand/40 focus-visible:bg-brand-soft/30 focus-visible:text-brand"
+                    aria-label={`Compare ${row.dimension} in detail`}
+                    tabIndex={0}
+                  >
+                    <Maximize2 className="h-2.5 w-2.5" />
+                    Detail
+                  </button>
                 </div>
                 <div className="col-span-4 flex items-start gap-2 text-[13px] leading-relaxed text-ink-muted">
                   <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-amber-400">
@@ -159,24 +194,39 @@ export function ComparisonSection() {
           </div>
         </div>
 
-        {/* Comparison cards (mobile/tablet) — tappable, deep-link to chapter */}
+        {/* Comparison cards (mobile/tablet) — tappable, deep-link to chapter.
+            Header row also has a nested "Detail" button that opens the
+            focused side-by-side modal (stops propagation). */}
         <div className="mt-10 grid gap-3 lg:hidden" data-anim>
           {COMPARISON_ROWS.map((row) => (
-            <button
-              type="button"
+            <div
               key={row.dimension}
-              onClick={() => jumpToChapter(row.href)}
-              aria-label={`See ${row.dimension} in Doctorooms — jump to chapter`}
-              className="group rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left transition-colors hover:border-brand/30 hover:bg-white/[0.06] focus-visible:border-brand/40 focus-visible:bg-white/[0.06]"
+              className="group rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left transition-colors hover:border-brand/30 hover:bg-white/[0.06] focus-within:border-brand/40 focus-within:bg-white/[0.06]"
             >
               <div className="flex items-center justify-between gap-2">
-                <h3 className="text-sm font-semibold text-ink-foreground">
-                  {row.dimension}
-                </h3>
-                <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-medium text-ink-muted transition-colors group-hover:border-brand/30 group-hover:text-brand">
-                  See it
-                  <ArrowRight className="h-3 w-3" />
-                </span>
+                <button
+                  type="button"
+                  onClick={() => jumpToChapter(row.href)}
+                  aria-label={`See ${row.dimension} in Doctorooms — jump to chapter`}
+                  className="flex min-w-0 flex-1 items-center gap-1 text-left"
+                >
+                  <h3 className="truncate text-sm font-semibold text-ink-foreground">
+                    {row.dimension}
+                  </h3>
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-medium text-ink-muted transition-colors group-hover:border-brand/30 group-hover:text-brand">
+                    See it
+                    <ArrowRight className="h-3 w-3" />
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => openModalFor(row.dimension, e)}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-medium text-ink-muted transition-colors hover:border-brand/40 hover:bg-brand-soft/30 hover:text-brand focus-visible:border-brand/40 focus-visible:bg-brand-soft/30 focus-visible:text-brand"
+                  aria-label={`Compare ${row.dimension} in detail`}
+                >
+                  <Maximize2 className="h-2.5 w-2.5" />
+                  Detail
+                </button>
               </div>
               <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/[0.06] p-2.5">
                 <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-amber-400">
@@ -194,11 +244,11 @@ export function ComparisonSection() {
                   {row.doctorooms}
                 </span>
               </div>
-            </button>
+            </div>
           ))}
         </div>
 
-        {/* CTA */}
+        {/* CTA row */}
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row" data-anim>
           <Button
             onClick={() => {
@@ -211,6 +261,14 @@ export function ComparisonSection() {
             See Doctorooms for my hospital
             <ArrowRight className="h-4 w-4" />
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => openModalFor(COMPARISON_ROWS[0].dimension)}
+            className="border-white/15 bg-white/5 text-ink-foreground hover:bg-white/10 hover:text-ink-foreground"
+          >
+            <Maximize2 className="h-4 w-4" />
+            Compare all dimensions
+          </Button>
           <Button variant="outline" asChild className="border-white/15 bg-white/5 text-ink-foreground hover:bg-white/10 hover:text-ink-foreground">
             <a href="#journey">Walk the patient journey</a>
           </Button>
@@ -219,6 +277,12 @@ export function ComparisonSection() {
           </span>
         </div>
       </div>
+
+      <ComparisonModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        initialDimension={modalDimension}
+      />
     </section>
   );
 }

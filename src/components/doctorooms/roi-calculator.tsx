@@ -181,12 +181,22 @@ export function ROICalculator() {
           {/* RIGHT — Output panel */}
           <div
             data-anim
-            className="relative overflow-hidden rounded-2xl border border-brand/30 bg-gradient-to-br from-brand-soft to-card p-6 shadow-sm sm:p-8"
+            className="glow-ring relative overflow-hidden rounded-2xl border border-brand/30 bg-gradient-to-br from-brand-soft to-card p-6 shadow-sm sm:p-8"
           >
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand to-transparent opacity-60" />
             <div className="flex items-center gap-2 text-sm font-medium text-brand">
               <TrendingUp className="h-4 w-4" aria-hidden="true" />
               Illustrative estimated annual value
+              <span
+                className="ml-auto inline-flex items-center gap-1 rounded-full border border-brand/30 bg-brand-soft/50 px-2 py-0.5 text-[10px] font-medium text-brand"
+                title="Recalculates as you move the sliders"
+              >
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand opacity-75" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand" />
+                </span>
+                Live
+              </span>
             </div>
 
             <div className="mt-4">

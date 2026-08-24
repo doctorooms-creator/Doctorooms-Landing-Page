@@ -10,6 +10,7 @@ import { useReveal, useScrollTriggerHygiene } from "@/lib/anim/hooks";
 import { IPD_STEPS } from "@/data/doctorooms";
 import { ROLE_ICONS, GENERIC_ICONS } from "./ui/icons";
 import { Chip, LiveDot } from "./ui/chip";
+import { GlossaryTerm } from "./glossary-context";
 import { motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 
@@ -109,9 +110,12 @@ export function IPDJourney() {
             className="mt-5 text-pretty text-muted-foreground sm:text-lg"
             data-anim
           >
-            Admission → Bed → Vitals → Doctor Orders → Investigation → Results
-            → Medication → Billing → Discharge. A continuous chain of data and
-            operational handoffs across roles.
+            Admission → Bed →{" "}
+            <GlossaryTerm term="Vitals">Vitals</GlossaryTerm> → Doctor Orders →
+            Investigation → Results → Medication →{" "}
+            <GlossaryTerm term="Billing">Billing</GlossaryTerm> →{" "}
+            <GlossaryTerm term="Discharge summary">Discharge</GlossaryTerm>. A
+            continuous chain of data and operational handoffs across roles.
           </p>
         </div>
 

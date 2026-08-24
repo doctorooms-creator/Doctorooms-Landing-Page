@@ -240,6 +240,155 @@ export const COMPARISON_STATS = [
   { fragmented: "Visibility = exports + spreadsheets", doctorooms: "Live, role-based reporting" },
 ] as const;
 
+/**
+ * Side-by-side detail payload for the comparison modal. Each entry maps
+ * to a COMPARISON_ROWS dimension and adds substantive depth: the
+ * fragmented pain points, the Doctorooms approach bullets, and a
+ * one-line "why it matters" tie to the buyer's bottom line.
+ *
+ * Bullets are qualitative (no invented metrics); they describe how the
+ * product actually works as observed in the marketing-true capability
+ * inventory.
+ */
+export const COMPARISON_DETAILS = [
+  {
+    dimension: "Patient discovery & booking",
+    fragmentedPain: [
+      "A separate website tool or no online presence at all",
+      "Manual phone bookings during business hours only",
+      "Patients can't compare doctors or time slots in one place",
+      "No-shows cost slots that could have been re-booked",
+    ],
+    doctoroomsDoes: [
+      "Doctor, clinic & hospital profiles indexed by specialty + location",
+      "Self-serve online + video consultation booking, 24/7",
+      "Slot sync across doctors, rooms and equipment in real time",
+      "Automated reminders cut no-shows before the appointment",
+    ],
+    why: "Patients find your doctors faster, book online, and show up — without your front desk re-keying anything.",
+    href: "#acquisition",
+  },
+  {
+    dimension: "Queue & front desk",
+    fragmentedPain: [
+      "Standalone token display disconnected from booking",
+      "Manual sign-in sheets at the front desk",
+      "Walk-in chaos during peak hours",
+      "Patients don't know their wait time",
+    ],
+    doctoroomsDoes: [
+      "One smart queue per doctor, room or service",
+      "Auto-merges online + walk-in arrivals",
+      "Live token position shown to patient on phone",
+      "Next-patient call + SMS notification built-in",
+    ],
+    why: "Front desk and patients see the same live queue — calmer waiting room, faster doctor throughput.",
+    href: "#queue",
+  },
+  {
+    dimension: "Consultation & EMR",
+    fragmentedPain: [
+      "A separate EMR system that doesn't talk to booking",
+      "Patient history re-keyed from paper or spreadsheets",
+      "Prescriptions handwritten or in a siloed tool",
+      "Lab results don't auto-attach to the chart",
+    ],
+    doctoroomsDoes: [
+      "One patient record across visits, OPD and IPD",
+      "Vitals, history, notes & Rx on a single screen",
+      "AI-assisted prescription drafting within the workflow",
+      "Lab and pharmacy push results + dispense events back to the chart",
+    ],
+    why: "Doctors spend consultation time on care, not on tab-switching or re-entering data.",
+    href: "#doctor",
+  },
+  {
+    dimension: "Pharmacy & inventory",
+    fragmentedPain: [
+      "Pharmacy POS that doesn't see prescriptions in real time",
+      "Inventory tracked in a separate sheet",
+      "Expiry + batch managed manually, easy to miss",
+      "Stock-outs discovered when the patient is waiting",
+    ],
+    doctoroomsDoes: [
+      "Dispense against the live prescription, with audit",
+      "Stock, batches, expiry and reorder in one module",
+      "Reorder-level alerts before stock runs out",
+      "Dispense events reflect back to the patient's record + bill",
+    ],
+    why: "No more stock-outs at the counter; expiry caught early; every dispense traceable.",
+    href: "#operations",
+  },
+  {
+    dimension: "Lab & diagnostics",
+    fragmentedPain: [
+      "Lab software that doesn't talk to the EMR",
+      "Results printed and pasted into the chart",
+      "Orders lost between clinician and lab bench",
+      "Patient calls back days later for results",
+    ],
+    doctoroomsDoes: [
+      "Order raised from the consultation in one click",
+      "Sample, result and reference range flow back to the chart",
+      "Out-of-range values flagged for the doctor's review",
+      "Patient notified when results are ready",
+    ],
+    why: "Doctors see results inline during the next consult — no chasing, no paste-and-pray.",
+    href: "#operations",
+  },
+  {
+    dimension: "Billing & insurance",
+    fragmentedPain: [
+      "Separate billing tool that re-keys charges",
+      "Insurance desk running its own spreadsheet",
+      "Claim status invisible to the front office",
+      "Reconciliation done manually at month-end",
+    ],
+    doctoroomsDoes: [
+      "Every dispense, lab order and procedure auto-captured on the bill",
+      "Payor eligibility held per patient, pre-auth tracked per encounter",
+      "Claim submission + status visible to the team",
+      "Reconciliation is per-transaction, not a month-end marathon",
+    ],
+    why: "Charge leakage drops, claim turnaround tightens, and finance stops being a separate world.",
+    href: "#operations",
+  },
+  {
+    dimension: "Reports & visibility",
+    fragmentedPain: [
+      "Reports = nightly exports to spreadsheets",
+      "Each department maintains its own pivot",
+      "Numbers don't reconcile across sources",
+      "Leadership waits a week for a current view",
+    ],
+    doctoroomsDoes: [
+      "Operational, clinical and financial views share one source",
+      "Role-scoped dashboards per admin / doctor / department",
+      "Live numbers, not yesterday's export",
+      "Drill from a KPI to the underlying transactions",
+    ],
+    why: "Decisions on yesterday's data are slower decisions. Live views mean faster course-correction.",
+    href: "#operations",
+  },
+  {
+    dimension: "AI assistance",
+    fragmentedPain: [
+      "AI is impossible across disconnected tools",
+      "Even if one tool has AI, the data context is partial",
+      "Role scope can't be enforced across silos",
+      "No audit trail across the fragmented stack",
+    ],
+    doctoroomsDoes: [
+      "Natural-language input → intent → role-aware data access",
+      "Admin can ask revenue; doctor can ask about their queue",
+      "Drafts the action, then awaits human confirmation",
+      "Every AI step logged for audit + review",
+    ],
+    why: "AI that respects role boundaries and writes to a single source can actually be deployed in healthcare.",
+    href: "#ai",
+  },
+] as const;
+
 export const FAQ_ITEMS = [
   {
     key: "isolation",

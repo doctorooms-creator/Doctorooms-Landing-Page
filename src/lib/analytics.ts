@@ -26,6 +26,9 @@ export type AnalyticsEvent =
   | "admin_bulk_delete"
   | "glossary_open"
   | "glossary_lookup"
+  | "comparison_modal_open"
+  | "comparison_modal_navigate"
+  | "glossary_inline_open"
   | "demo_form_success";
 
 type Payload = Record<string, string | number | boolean | undefined>;

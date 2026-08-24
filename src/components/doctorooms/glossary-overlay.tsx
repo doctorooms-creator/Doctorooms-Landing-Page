@@ -34,9 +34,18 @@ import { BookOpen, Search, Sparkles } from "lucide-react";
 export function GlossaryOverlay({
   open,
   onOpenChange,
+  seedTerm,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  /**
+   * Optional pre-set search term. Used by the GlossaryContext provider
+   * when a visitor clicks an inline <GlossaryTerm> chip — the glossary
+   * opens already filtered to that term. The seed is consumed by
+   * GlossaryBody's `useState` initializer on mount, so it's captured
+   * fresh on each open.
+   */
+  seedTerm?: string | null;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -47,7 +56,7 @@ export function GlossaryOverlay({
         {/* Radix keeps DialogContent mounted briefly for close transition.
             Only render the body when open so state is fresh on each open. */}
         {open ? (
-          <GlossaryBody />
+          <GlossaryBody seedTerm={seedTerm ?? null} />
         ) : (
           <div className="sr-only" id="glossary-desc">
             Healthcare terminology reference.
@@ -58,8 +67,12 @@ export function GlossaryOverlay({
   );
 }
 
-function GlossaryBody() {
-  const [query, setQuery] = useState("");
+function GlossaryBody({ seedTerm }: { seedTerm: string | null }) {
+  // useState initializer captures the seed at mount time. GlossaryBody
+  // only mounts when `open` transitions false→true, so the seed is
+  // fresh on each open. If seed is empty/null, we start with an empty
+  // search query (showing all 20 terms).
+  const [query, setQuery] = useState(() => seedTerm ?? "");
   const [activeRelated, setActiveRelated] = useState<string | null>(null);
 
   const filtered = useMemo(() => {

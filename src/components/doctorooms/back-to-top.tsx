@@ -12,10 +12,10 @@ import {
 import { ArrowUp, BookOpen, Keyboard, ShieldCheck, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDemoDialog } from "./demo-dialog";
+import { useGlossary } from "./glossary-context";
 import { track } from "@/lib/analytics";
 import { KEYBOARD_SHORTCUTS } from "@/data/doctorooms";
 import { AdminOverlay } from "./admin-overlay";
-import { GlossaryOverlay } from "./glossary-overlay";
 
 /**
  * BackToTop — floating action cluster + global keyboard shortcuts + admin overlay.
@@ -42,8 +42,8 @@ export function BackToTop() {
   const [hint, setHint] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
-  const [glossaryOpen, setGlossaryOpen] = useState(false);
   const { open } = useDemoDialog();
+  const { openFor: openGlossaryFor } = useGlossary();
 
   useEffect(() => {
     const onScroll = () => {
@@ -61,8 +61,9 @@ export function BackToTop() {
 
   const openGlossary = useCallback(() => {
     track("glossary_open", { source: "keyboard_shortcut" });
-    setGlossaryOpen(true);
-  }, []);
+    // openFor(null) → empty search seed (shows all 20 terms).
+    openGlossaryFor(null);
+  }, [openGlossaryFor]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -125,7 +126,7 @@ export function BackToTop() {
   const openGlossaryFromHelp = () => {
     track("glossary_open", { source: "shortcuts_dialog" });
     setHelpOpen(false);
-    setGlossaryOpen(true);
+    openGlossaryFor(null);
   };
 
   return (
@@ -277,8 +278,7 @@ export function BackToTop() {
 
       {/* In-page team admin panel */}
       <AdminOverlay open={adminOpen} onOpenChange={setAdminOpen} />
-      {/* Healthcare glossary overlay */}
-      <GlossaryOverlay open={glossaryOpen} onOpenChange={setGlossaryOpen} />
+      {/* Healthcare glossary overlay — rendered by GlossaryProvider */}
     </>
   );
 }

@@ -12,6 +12,7 @@ import { MODULE_ICONS, type ModuleIconKey } from "./ui/icons";
 import { Chip, LiveDot } from "./ui/chip";
 import { ProductFrame } from "./ui/product-frame";
 import { Button } from "@/components/ui/button";
+import { GlossaryTerm } from "./glossary-context";
 import { ArrowRight } from "lucide-react";
 import { useDemoDialog } from "./demo-dialog";
 import { track } from "@/lib/analytics";
@@ -97,7 +98,10 @@ export function HospitalOS() {
             className="mt-5 text-pretty text-muted-foreground sm:text-lg"
             data-anim
           >
-            OPD, IPD, Laboratory, Pharmacy, Billing, Inventory, OT, Insurance,
+            <GlossaryTerm term="OPD">OPD</GlossaryTerm>,{" "}
+            <GlossaryTerm term="IPD">IPD</GlossaryTerm>, Laboratory,{" "}
+            <GlossaryTerm term="Pharmacy">Pharmacy</GlossaryTerm>, Billing,
+            Inventory, <GlossaryTerm term="OT">OT</GlossaryTerm>, Insurance,
             Reports, Queue, Documents — connected in one operating layer.
           </p>
         </div>

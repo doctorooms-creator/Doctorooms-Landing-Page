@@ -10,6 +10,7 @@ import {
 import { track } from "@/lib/analytics";
 import { Chip, LiveDot } from "./ui/chip";
 import { ProductFrame } from "./ui/product-frame";
+import { GlossaryTerm } from "./glossary-context";
 import {
   CalendarClock,
   ClipboardList,
@@ -111,9 +112,10 @@ export function DoctorGrowth() {
             className="mx-auto mt-5 max-w-2xl text-pretty text-muted-foreground sm:text-lg"
             data-anim
           >
-            Queue → patient history → consultation → AI-assisted prescription →
-            follow-up. Minimal navigation. AI reduces cognitive and
-            administrative friction.
+            <GlossaryTerm term="Queue">Queue</GlossaryTerm> → patient history →
+            consultation → AI-assisted{" "}
+            <GlossaryTerm term="e-Rx">prescription</GlossaryTerm> → follow-up.
+            Minimal navigation. AI reduces cognitive and administrative friction.
           </p>
         </div>
 

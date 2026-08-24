@@ -489,3 +489,40 @@
 .sheen:hover::after {
   transform: translateX(100%);
 }
+
+/* Glow-ring — a soft outer halo for premium badges / icon tiles /
+   highlighted cards. Uses box-shadow so it can stack with other
+   shadows without layout impact. */
+.glow-ring {
+  box-shadow:
+    0 0 0 1px oklch(0.55 0.12 188 / 0.20),
+    0 0 22px -4px oklch(0.55 0.12 188 / 0.35);
+}
+.glow-ring-growth {
+  box-shadow:
+    0 0 0 1px oklch(0.65 0.14 165 / 0.20),
+    0 0 22px -4px oklch(0.65 0.14 165 / 0.35);
+}
+
+/* Divider-gradient — a thin horizontal hairline that fades from
+   transparent → brand → growth → transparent. Used as a section
+   separator inside dark "ink-section" chapters. */
+.divider-gradient {
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    oklch(0.55 0.12 188 / 0.45) 35%,
+    oklch(0.65 0.14 165 / 0.55) 65%,
+    transparent 100%
+  );
+  border: 0;
+}
+
+/* Inline glossary term chip — a small affordance that distinguishes
+   the look-up-able terms from regular links. Dotted underline +
+   subtle brand tint on hover. */
+.glossary-term {
+  cursor: help;
+}
+
