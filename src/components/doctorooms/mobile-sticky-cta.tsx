@@ -34,6 +34,7 @@ const CHAPTER_LABELS: { id: string; label: string }[] = [
   { id: "security", label: "Trust" },
   { id: "faq", label: "Questions" },
   { id: "roi", label: "ROI" },
+  { id: "rollout", label: "Rollout" },
   { id: "demo", label: "Book a Demo" },
 ];
 

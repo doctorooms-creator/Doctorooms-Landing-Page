@@ -9,7 +9,6 @@ import { useReducedMotion } from "@/lib/anim/gsap-register";
 import { track } from "@/lib/analytics";
 import { COMPARISON_ROWS, COMPARISON_STATS } from "@/data/doctorooms";
 import { useDemoDialog } from "./demo-dialog";
-import { Chip } from "./ui/chip";
 import { ArrowRight, Check, Layers, Unplug, X } from "lucide-react";
 
 /**
@@ -30,6 +29,16 @@ export function ComparisonSection() {
   useReveal(root, { stagger: 0.08, duration: 0.8 });
   useScrollTriggerHygiene();
   const { open } = useDemoDialog();
+
+  // Smooth-scroll to the chapter a comparison row maps to, with the same
+  // 64px sticky-header offset the rest of the site uses.
+  function jumpToChapter(href: string) {
+    track("platform_explore_click", { source: "comparison_row", target: href });
+    const el = document.querySelector(href);
+    if (!el) return;
+    const top = (el as HTMLElement).getBoundingClientRect().top + window.scrollY - 64;
+    window.scrollTo({ top, behavior: "smooth" });
+  }
 
   return (
     <section
@@ -113,21 +122,25 @@ export function ComparisonSection() {
                 Doctorooms
               </div>
             </div>
-            {/* Rows */}
+            {/* Rows — clickable, deep-link to the relevant chapter */}
             {COMPARISON_ROWS.map((row, i) => (
-              <motion.div
+              <motion.button
+                type="button"
                 key={row.dimension}
                 initial={reduced ? false : { opacity: 0, y: 8 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-10%" }}
                 transition={{ duration: 0.4, delay: reduced ? 0 : Math.min(i * 0.04, 0.3) }}
+                onClick={() => jumpToChapter(row.href)}
+                aria-label={`See ${row.dimension} in Doctorooms — jump to chapter`}
                 className={cn(
-                  "grid grid-cols-12 items-start gap-2 px-6 py-4 transition-colors hover:bg-white/[0.02]",
+                  "group grid w-full grid-cols-12 items-start gap-2 px-6 py-4 text-left transition-colors hover:bg-white/[0.04] focus-visible:bg-white/[0.04]",
                   i !== COMPARISON_ROWS.length - 1 && "border-b border-white/5"
                 )}
               >
-                <div className="col-span-3 text-sm font-medium text-ink-foreground">
-                  {row.dimension}
+                <div className="col-span-3 flex items-center gap-1.5 text-sm font-medium text-ink-foreground">
+                  <span>{row.dimension}</span>
+                  <ArrowRight className="h-3 w-3 shrink-0 text-brand opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100" />
                 </div>
                 <div className="col-span-4 flex items-start gap-2 text-[13px] leading-relaxed text-ink-muted">
                   <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-amber-400">
@@ -139,27 +152,31 @@ export function ComparisonSection() {
                   <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-brand/20 text-brand">
                     <Check className="h-2.5 w-2.5" strokeWidth={3} />
                   </span>
-                  <span>{row.doctorooms}</span>
+                  <span className="text-left">{row.doctorooms}</span>
                 </div>
-              </motion.div>
+              </motion.button>
             ))}
           </div>
         </div>
 
-        {/* Comparison cards (mobile/tablet) */}
+        {/* Comparison cards (mobile/tablet) — tappable, deep-link to chapter */}
         <div className="mt-10 grid gap-3 lg:hidden" data-anim>
           {COMPARISON_ROWS.map((row) => (
-            <div
+            <button
+              type="button"
               key={row.dimension}
-              className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+              onClick={() => jumpToChapter(row.href)}
+              aria-label={`See ${row.dimension} in Doctorooms — jump to chapter`}
+              className="group rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left transition-colors hover:border-brand/30 hover:bg-white/[0.06] focus-visible:border-brand/40 focus-visible:bg-white/[0.06]"
             >
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-sm font-semibold text-ink-foreground">
                   {row.dimension}
                 </h3>
-                <Chip tone="ink" className="text-[10px]">
-                  step
-                </Chip>
+                <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-medium text-ink-muted transition-colors group-hover:border-brand/30 group-hover:text-brand">
+                  See it
+                  <ArrowRight className="h-3 w-3" />
+                </span>
               </div>
               <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/[0.06] p-2.5">
                 <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-amber-400">
@@ -177,7 +194,7 @@ export function ComparisonSection() {
                   {row.doctorooms}
                 </span>
               </div>
-            </div>
+            </button>
           ))}
         </div>
 

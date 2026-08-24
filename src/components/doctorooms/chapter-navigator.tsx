@@ -20,6 +20,7 @@ const CHAPTERS: Chapter[] = [
   { id: "roles", label: "Roles", n: "11" },
   { id: "security", label: "Trust", n: "12" },
   { id: "roi", label: "ROI", n: "13" },
+  { id: "rollout", label: "Rollout", n: "13½" },
   { id: "demo", label: "Book a Demo", n: "14" },
 ];
 

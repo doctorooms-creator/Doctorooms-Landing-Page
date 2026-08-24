@@ -19,6 +19,7 @@ import { RoleOrbit } from "@/components/doctorooms/role-orbit";
 import { TrustSection } from "@/components/doctorooms/trust-section";
 import { FAQSection } from "@/components/doctorooms/faq-section";
 import { ROICalculator } from "@/components/doctorooms/roi-calculator";
+import { RolloutTimeline } from "@/components/doctorooms/rollout-timeline";
 import { FinalCTA } from "@/components/doctorooms/final-cta";
 import { ScrollProgress } from "@/components/doctorooms/scroll-progress";
 import { ChapterNavigator } from "@/components/doctorooms/chapter-navigator";
@@ -81,6 +82,8 @@ export default function Home() {
           <FAQSection />
           {/* Chapter 13 — ROI */}
           <ROICalculator />
+          {/* Chapter 13½ — How rollout works */}
+          <RolloutTimeline />
           {/* Chapter 14 — Final Conversion */}
           <FinalCTA />
         </main>

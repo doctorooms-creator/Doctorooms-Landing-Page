@@ -188,41 +188,49 @@ export const COMPARISON_ROWS = [
     dimension: "Patient discovery & booking",
     fragmented: "A separate website or listings tool, or none at all",
     doctorooms: "Doctor, clinic & hospital profiles + online + video booking, built in",
+    href: "#acquisition",
   },
   {
     dimension: "Queue & front desk",
     fragmented: "Standalone token display, manual sign-in, walk-in chaos",
     doctorooms: "Smart queue, live position, next-patient call, notifications",
+    href: "#queue",
   },
   {
     dimension: "Consultation & EMR",
     fragmented: "A separate EMR, re-keyed from the booking system",
     doctorooms: "History, vitals, notes & AI-assisted prescription on one patient record",
+    href: "#doctor",
   },
   {
     dimension: "Pharmacy & inventory",
     fragmented: "Pharmacy POS + a different inventory sheet + spreadsheets",
     doctorooms: "Dispensing, stock, batches, expiry & reorder on one platform",
+    href: "#operations",
   },
   {
     dimension: "Lab & diagnostics",
     fragmented: "Lab software that doesn't talk to the EMR or billing",
     doctorooms: "Orders → samples → results flow back into the chart automatically",
+    href: "#operations",
   },
   {
     dimension: "Billing & insurance",
     fragmented: "Billing tool + insurance desk + manual reconciliation",
     doctorooms: "Estimates, claims, receipts & reconciliation connected to every visit",
+    href: "#operations",
   },
   {
     dimension: "Reports & visibility",
     fragmented: "Exports stitched together in spreadsheets, always delayed",
     doctorooms: "Operational, clinical & financial views live across departments",
+    href: "#operations",
   },
   {
     dimension: "AI assistance",
     fragmented: "Not possible across disconnected tools",
     doctorooms: "Role-aware AI: intent → scoped data → draft action → confirmation",
+    href: "#ai",
   },
 ] as const;
 
@@ -275,6 +283,41 @@ export const KEYBOARD_SHORTCUTS = [
   { keys: ["?"], label: "Open this keyboard shortcuts panel", desc: "You are here." },
   { keys: ["Esc"], label: "Close any open dialog", desc: "Dismiss overlays and restore focus." },
   { keys: ["T"], label: "Scroll back to the top", desc: "Jump to the hero of the page." },
+] as const;
+
+export const ROLLOUT_STEPS = [
+  {
+    n: "01",
+    key: "Scope",
+    title: "We scope what you go live with",
+    desc: "A walkthrough maps your organization — clinic, hospital, chain or lab — and the modules that create the most friction today. We agree on what goes live first and what connects later.",
+    deliverables: ["Org & module scope", "Rollout plan", "Timeline estimate"],
+    tone: "brand" as const,
+  },
+  {
+    n: "02",
+    key: "Configure",
+    title: "We configure your tenant",
+    desc: "Roles, departments, doctor & clinic profiles, bed map, pharmacy stock, lab tests, billing rules and insurance payers are set up against your real workflows. Nothing is live until you sign off.",
+    deliverables: ["Role & access setup", "Department & bed map", "Workflow configuration"],
+    tone: "growth" as const,
+  },
+  {
+    n: "03",
+    key: "Train",
+    title: "We train your staff by role",
+    desc: "Admins, doctors, receptionists, nurses, pharmacists and lab staff each get role-specific training on the modules they'll use — not a generic tour. Super-users are identified for each department.",
+    deliverables: ["Role-based training", "Super-user identification", "Reference materials"],
+    tone: "brand" as const,
+  },
+  {
+    n: "04",
+    key: "Go live",
+    title: "You go live — and we stay",
+    desc: "We're on standby through your first days of real patient flow. Issues get fast responses. After go-live, we iterate on what your team actually needs instead of locking you into a fixed process.",
+    deliverables: ["Go-live support", "Iteration cycles", "Ongoing partnership"],
+    tone: "growth" as const,
+  },
 ] as const;
 
 export const ROI_DRIVERS = [

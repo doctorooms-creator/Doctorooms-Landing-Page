@@ -400,3 +400,69 @@ Task: Assess project status, QA via agent-browser, fix bugs or add features + im
   5. **A11y audit**: run axe-core on the full page to catch any ARIA/label/contrast regressions from the new comparison table (the amber-on-dark fragmented cells should be checked for contrast).
 
 Handoff: next cron round should pick up item #2 (admin review view — makes the new persistence layer usable) or #1 (code-splitting for performance) and continue polishing. The site now has a complete conversion path (discovery → comparison → story → FAQ → ROI → demo form → persisted lead), SEO foundations (OG image + JSON-LD), and premium UX (keyboard shortcuts, chapter nav, mobile sticky CTA).
+
+---
+Task ID: 14 (cron round 4)
+Agent: main (15-min webDevReview loop, continued)
+Task: Assess project status, QA via agent-browser, fix bugs or add features + improve styling.
+
+## 1. Current Project Status (assessment)
+- Project is STABLE. Dev server healthy on port 3000; `GET / 200` sub-second; no runtime/console errors.
+- Prior round (Task 13) shipped: comparison section (Ch2½), JSON-LD structured data, Prisma demo-request persistence. All verified working.
+- QA this round: reloaded page, set up console.error capture, scrolled through all 18 sections (top → demo, including new #rollout) → 0 page errors, 0 console errors. No bugs to fix.
+- `bun run lint` → 0 errors, 0 warnings.
+- Phase is stable → moved to NEW feature/styling additions this round, picking up item #3 (comparison row deep-linking) from the prior round's next-phase recommendations + adding a new "How rollout works" section (item #5-adjacent: a genuinely new conversion-support chapter).
+
+## 2. Completed modifications this round
+
+### Enhancement: Comparison rows are now clickable → deep-link to relevant chapter
+- `src/data/doctorooms.ts` — added a `href` field to each of the 8 `COMPARISON_ROWS` entries, mapping each delta dimension to the product chapter it maps to:
+  * Patient discovery & booking → #acquisition
+  * Queue & front desk → #queue
+  * Consultation & EMR → #doctor
+  * Pharmacy & inventory, Lab & diagnostics, Billing & insurance, Reports & visibility → #operations
+  * AI assistance → #ai
+- `src/components/doctorooms/comparison-section.tsx` — converted the desktop table rows from `motion.div` to `motion.button` (type="button", full-width grid, text-left, role-appropriate) and the mobile cards from `div` to `button`:
+  * New `jumpToChapter(href)` helper: tracks `platform_explore_click { source: "comparison_row", target: href }` then smooth-scrolls with the same 64px sticky-header offset the rest of the site uses.
+  * Desktop: dimension column now shows an ArrowRight icon that fades in on hover/focus-visible (`group-hover:opacity-100`), signaling interactivity. Row hover tint deepened to `hover:bg-white/[0.04]`. aria-label per row: "See {dimension} in Doctorooms — jump to chapter".
+  * Mobile: the "step" Chip was replaced by a "See it" badge (with ArrowRight) in the card header that turns brand on hover/focus. Card border goes brand on hover/focus-visible.
+  * Removed now-unused `Chip` import (lint clean).
+- Verified: clicked row 1 (Patient discovery & booking) → page smooth-scrolled to #acquisition with topOffset: 64 (exactly the sticky-header offset), inView: true. All 17 buttons in the section (8 desktop + 8 mobile-hidden + 1 CTA) have correct aria-labels.
+
+### New feature: "How rollout works" 4-step timeline (Chapter 13½)
+- `src/components/doctorooms/rollout-timeline.tsx` — new section between ROI (Ch13) and FinalCTA (Ch14):
+  * Answers the natural post-decision buyer question "what happens after I say yes?" with a 4-step path: Scope → Configure → Train → Go live — without inventing timelines or guarantees (the footer note explicitly says "No fixed timeline on this page").
+  * Each step: numbered badge (01–04), role-themed icon (ClipboardCheck / Rocket / GraduationCap / CalendarCheck), key label, title, description, and a "deliverables" chip row (e.g. "Org & module scope", "Role & access setup", "Role-based training", "Go-live support").
+  * **Desktop (lg+)**: 4-column grid with a horizontal gradient connecting line (brand/10 → brand/40 → growth/40) running through the milestone dots. Each milestone is a 68×68 rounded-2xl tile (brand-soft or growth/10 depending on tone) with the icon + a numbered badge.
+  * **Mobile/tablet**: vertical rail with a left gradient line (top-to-bottom), same milestone nodes, body to the right. framer-motion staggered fade-in (reduced-motion renders static).
+  * Footnote card: "No fixed timeline on this page." + qualitative scope contrast (clinic quick with discovery/booking/queue; multi-specialty hospital with IPD/lab/pharmacy/billing/insurance takes longer). CTA: "Start with a private walkthrough" (primary, tracks `hero_demo_click {source:"rollout"}` → useDemoDialog) + "See the ROI math" (outline → #roi).
+  * Light section (py-24 sm:py-32) with aurora-blob backdrop, eyebrow "Chapter 13½ — Rollout", display-2 headline "What happens after you say yes." with gradient on "say yes.".
+- `src/data/doctorooms.ts` — added `ROLLOUT_STEPS` (4 entries, each with n/key/title/desc/deliverables/tone). Truthful content only — no invented durations, no SLAs, consistent with the FAQ's "rollout duration" answer.
+- `src/app/page.tsx` — imported + mounted `RolloutTimeline` between ROICalculator and FinalCTA.
+- `src/components/doctorooms/chapter-navigator.tsx` — added `{ id: "rollout", label: "Rollout", n: "13½" }` (navigator now tracks 16 chapters).
+- `src/components/doctorooms/mobile-sticky-cta.tsx` — added "rollout"/"Rollout" to CHAPTER_LABELS so the mobile bar shows the right label when the section is in view.
+
+### Styling polish
+- Comparison rows: deepened hover tint (white/[0.04]), added focus-visible parity, ArrowRight fade-in affordance on the dimension label, border-brand/30 + text-brand color shift on the mobile "See it" badge.
+- Rollout timeline: cohesive brand-soft/growth milestone color language matching the alternating `tone` field (brand for Scope/Train, growth for Configure/Go-live). Numbered badges use the matching solid tone for clear visual rhythm. Deliverable chips use a 1px dot + label pattern (brand dot for brand steps, growth dot for growth steps) for at-a-glance tone consistency. Gradient connecting lines (horizontal desktop, vertical mobile) reinforce the journey metaphor.
+
+## 3. Verification (agent-browser)
+- Reload → 0 page errors, 0 console errors.
+- Full 18-section scroll-through (top → demo, including new #rollout) → 0 errors after traversal.
+- Comparison deep-link: clicked row 1 (Patient discovery & booking) → smooth-scrolled to #acquisition, topOffset: 64 (exact sticky-header offset), inView: true. All 17 buttons have aria-labels.
+- Rollout section: scrolled to #rollout → 4 step headings render (We scope / We configure / We train / You go live), both CTAs present, footnote renders.
+- Chapter navigator: now 16 dots (added "Rollout" at 13½).
+- `bun run lint` → 0 errors, 0 warnings.
+- Screenshots saved: `download/rollout-timeline.png`, `download/comparison-deeplink.png`.
+- Regression: OrgFit, AI voice, FAQ, keyboard shortcuts, mobile sticky CTA, comparison table, demo form persistence all unchanged and still working.
+
+## 4. Unresolved issues / risks + next-phase recommendations
+- No bugs introduced. No transient compile errors this round.
+- **Recommended next-phase work** (priority order):
+  1. **Performance — code-splitting**: the page now has 18 sections + 4 floating UI clusters. Use `next/dynamic` with `ssr:false` for the heaviest GSAP-pinned sections (PatientJourney, RoleOrbit, IPDJourney) to shrink initial JS. Add a `loading.tsx` skeleton. Initial render is still sub-second, so this is an optimization, not a fix. Care needed: ScrollTrigger needs the element mounted, so lazy sections must reserve height to avoid trigger recalculation on mount.
+  2. **Admin review view (within the single-route constraint)**: since the rules forbid new page routes, ship an admin panel as a keyboard-shortcut-activated overlay (e.g. `Shift+A`) inside the existing landing page that fetches `/api/demo` GET and renders the persisted DemoRequest rows as a table with inline status updates via PATCH. Turns the persistence layer into a usable team tool without breaking the single-route rule.
+  3. **A11y audit**: run axe-core on the full page. Specific focus: contrast on the comparison table's amber-on-dark fragmented cells (amber-400 on ink), the rollout timeline's deliverable chips (muted-foreground on muted/40), and the mobile sticky CTA bar's backdrop-blur legibility.
+  4. **Lighthouse / Core Web Vitals**: run a real Lighthouse pass to baseline LCP/CLS/INP now that the page has 18 sections. LCP candidate remains the hero headline (all CSS/SVG mocks, no large images; og.png is crawler-only).
+  5. **Micro-interactions**: add a subtle confetti / success-state micro-animation to the demo form on successful submit (the toast already appears; a brief visual celebration could lift the conversion moment).
+
+Handoff: next cron round should pick up item #2 (in-page admin overlay for demo-request review — makes the persistence layer usable without a new route) or #1 (code-splitting for performance). The site now has a complete, conversion-optimized narrative: discovery → problem → comparison(deeplinked) → acquisition → doctor → AI → video → queue → journey → operations → org-fit → IPD → roles → trust → FAQ → ROI → rollout → final CTA, with real lead persistence, SEO foundations (OG + JSON-LD), premium UX (keyboard shortcuts, chapter nav, mobile sticky CTA), and a usable /api/demo GET endpoint.
