@@ -12,6 +12,7 @@ import { VideoConsultation } from "@/components/doctorooms/video-consultation";
 import { QueueExperience } from "@/components/doctorooms/queue-experience";
 import { PatientJourney } from "@/components/doctorooms/patient-journey";
 import { HospitalOS } from "@/components/doctorooms/hospital-os";
+import { OrgFit } from "@/components/doctorooms/org-fit";
 import { IPDJourney } from "@/components/doctorooms/ipd-journey";
 import { RoleOrbit } from "@/components/doctorooms/role-orbit";
 import { TrustSection } from "@/components/doctorooms/trust-section";
@@ -63,6 +64,8 @@ export default function Home() {
           <PatientJourney />
           {/* Chapter 9 — Hospital Operations */}
           <HospitalOS />
+          {/* Chapter 9½ — Built for your organization (org-fit selector) */}
+          <OrgFit />
           {/* Chapter 10 — IPD Story */}
           <IPDJourney />
           {/* Chapter 11 — Role Ecosystem */}

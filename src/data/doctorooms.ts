@@ -258,3 +258,42 @@ export const PROBLEM_SYSTEMS = [
   "Comms",
   "Reports",
 ] as const;
+
+export const ORG_FIT = [
+  {
+    key: "clinic",
+    label: "Independent clinic",
+    icon: "Stethoscope",
+    headline: "Run your clinic like a modern practice.",
+    desc: "Be discoverable, book patients online and in-person, manage your queue, and let AI draft prescriptions while you focus on care.",
+    modules: ["OPD", "Queue", "Pharmacy", "Billing", "Documents"],
+    metric: { label: "Typical scale", value: "1–4 doctors" },
+  },
+  {
+    key: "hospital",
+    label: "Multi-specialty hospital",
+    icon: "BedDouble",
+    headline: "Connect OPD to IPD without the chaos.",
+    desc: "From admission to discharge, every department — lab, pharmacy, billing, OT, insurance — talks to the same patient record.",
+    modules: ["OPD", "IPD", "Queue", "Laboratory", "Pharmacy", "Billing", "Insurance", "OT"],
+    metric: { label: "Typical scale", value: "50–500 beds" },
+  },
+  {
+    key: "chain",
+    label: "Hospital chain",
+    icon: "Building2",
+    headline: "One platform across every location.",
+    desc: "Multi-tenant isolation, cross-location reporting, shared inventory and insurance workflows — without giving up per-hospital control.",
+    modules: ["OPD", "IPD", "Laboratory", "Pharmacy", "Billing", "Inventory", "Insurance", "Reports", "Documents"],
+    metric: { label: "Typical scale", value: "2+ locations" },
+  },
+  {
+    key: "lab",
+    label: "Diagnostic lab",
+    icon: "FlaskConical",
+    headline: "From order to report, end to end.",
+    desc: "Receive orders from clinics and hospitals, track samples, publish results back to the referring doctor — all auditable.",
+    modules: ["Laboratory", "Billing", "Inventory", "Reports", "Documents"],
+    metric: { label: "Typical scale", value: "Standalone or network" },
+  },
+] as const;

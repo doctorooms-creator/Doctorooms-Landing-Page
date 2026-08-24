@@ -67,14 +67,28 @@ export function ChapterNavigator() {
   return (
     <nav
       aria-label="Chapters"
-      className="pointer-events-none fixed right-6 top-1/2 z-50 hidden -translate-y-1/2 lg:block"
+      className="pointer-events-none fixed right-5 top-1/2 z-50 hidden -translate-y-1/2 lg:block"
     >
-      <ul className="pointer-events-auto flex flex-col gap-2.5">
+      <ul className="flex flex-col items-end gap-2.5">
         {CHAPTERS.map((c) => {
           const isActive = c.id === active;
           const isHover = c.id === hovered;
           return (
             <li key={c.id} className="relative flex items-center justify-end">
+              {/* Non-interactive label tooltip — sits left of the dot */}
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "pointer-events-none absolute right-6 whitespace-nowrap rounded-md px-2 py-0.5 text-[11px] font-medium transition-all duration-200",
+                  isHover || isActive
+                    ? "translate-x-0 bg-brand/10 text-brand opacity-100"
+                    : "translate-x-2 opacity-0"
+                )}
+              >
+                <span className="mr-1 text-[10px] text-brand/70">{c.n}</span>
+                {c.label}
+              </span>
+              {/* Only the dot captures clicks — keeps the nav from covering content */}
               <button
                 type="button"
                 onClick={() => jump(c.id)}
@@ -84,26 +98,15 @@ export function ChapterNavigator() {
                 onBlur={() => setHovered(null)}
                 aria-label={`Go to chapter ${c.n}: ${c.label}`}
                 aria-current={isActive ? "true" : undefined}
-                className="group flex items-center gap-2.5"
+                className="group pointer-events-auto flex h-5 w-5 items-center justify-center"
               >
-                <span
-                  className={cn(
-                    "whitespace-nowrap rounded-md px-2 py-0.5 text-[11px] font-medium transition-all duration-200",
-                    isHover || isActive
-                      ? "translate-x-0 bg-brand/10 text-brand opacity-100"
-                      : "translate-x-2 opacity-0"
-                  )}
-                >
-                  <span className="mr-1 text-[10px] text-brand/70">{c.n}</span>
-                  {c.label}
-                </span>
                 <span
                   className={cn(
                     "block h-1.5 rounded-full transition-all duration-300",
                     isActive
-                      ? "w-6 bg-gradient-to-r from-brand to-growth"
+                      ? "w-5 bg-gradient-to-r from-brand to-growth"
                       : isHover
-                        ? "w-4 bg-brand/60"
+                        ? "w-3.5 bg-brand/60"
                         : "w-1.5 bg-foreground/25 group-hover:bg-foreground/40"
                   )}
                 />

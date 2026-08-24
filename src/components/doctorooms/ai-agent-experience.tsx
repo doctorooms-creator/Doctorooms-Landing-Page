@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -17,9 +17,12 @@ import { AI_ROLE_ICONS, Icon } from "./ui/icons";
 import {
   Check,
   Lock,
+  Mic,
+  MicOff,
   ScrollText,
   ShieldCheck,
   Sparkles,
+  Square,
 } from "lucide-react";
 
 type RoleKey = (typeof AI_ROLES)[number]["role"];
@@ -30,12 +33,18 @@ const TRUST = [
   { icon: ScrollText, label: "Audited actions" },
 ];
 
+type HistoryItem = { role: RoleKey; exampleIdx: number; text: string };
+type MicState = "idle" | "recording" | "transcribing";
+
 export function AIAgentExperience() {
   const root = useRef<HTMLDivElement>(null);
   const reduced = useReducedMotion();
   const [role, setRole] = useState<RoleKey>("Doctor");
   const [exampleIdx, setExampleIdx] = useState(0);
   const [confirmed, setConfirmed] = useState(false);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [micState, setMicState] = useState<MicState>("idle");
+  const [transcript, setTranscript] = useState("");
 
   useReveal(root, { stagger: 0.1, duration: 0.85 });
   useScrollTriggerHygiene();
@@ -43,18 +52,33 @@ export function AIAgentExperience() {
   const current = AI_ROLES.find((r) => r.role === role) ?? AI_ROLES[1];
   const RoleIcon = AI_ROLE_ICONS[current.role];
 
+  function pushHistory(r: RoleKey, idx: number, text: string) {
+    setHistory((prev) => {
+      // Dedupe consecutive identical.
+      const last = prev[0];
+      if (last && last.role === r && last.exampleIdx === idx) return prev;
+      return [{ role: r, exampleIdx: idx, text }, ...prev].slice(0, 3);
+    });
+  }
+
   function changeRole(r: RoleKey) {
     if (r === role) return;
     track("ai_demo_interaction", { role: r });
     setRole(r);
     setExampleIdx(0);
     setConfirmed(false);
+    setMicState("idle");
+    setTranscript("");
   }
 
-  function selectExample(i: number) {
-    if (i === exampleIdx) return;
+  function selectExample(i: number, viaVoice = false) {
+    if (i === exampleIdx && !viaVoice) return;
     setExampleIdx(i);
     setConfirmed(false);
+    pushHistory(role, i, current.examples[i]);
+    if (viaVoice) {
+      track("ai_demo_interaction", { role, via: "voice" });
+    }
   }
 
   function onConfirm() {
@@ -65,6 +89,60 @@ export function AIAgentExperience() {
   function onCancel() {
     setConfirmed(false);
   }
+
+  function replayHistory(h: HistoryItem) {
+    if (h.role !== role) changeRole(h.role);
+    selectExample(h.exampleIdx);
+  }
+
+  // ── Voice input mock ───────────────────────────────────────────
+  // Click mic → recording (waveform) → transcribing → fills the
+  // transcript with the role's next example and "sends" it.
+  function toggleMic() {
+    if (micState === "idle") {
+      setMicState("recording");
+      track("ai_demo_interaction", { role, action: "voice_start" });
+    } else if (micState === "recording") {
+      finishRecording();
+    }
+    // transcribing is a transient state — ignore taps during it.
+  }
+
+  function finishRecording() {
+    setMicState("transcribing");
+    // Pick the next example for the current role (cycle), excluding the
+    // currently-selected one when possible so the exchange visibly changes.
+    const total = current.examples.length;
+    let next = (exampleIdx + 1) % total;
+    const transcriptText = current.examples[next];
+
+    const fillDelay = reduced ? 350 : 850;
+    const t = window.setTimeout(() => {
+      setTranscript(transcriptText);
+      setMicState("idle");
+      // Brief beat so the user sees the filled transcript, then send.
+      const t2 = window.setTimeout(() => {
+        selectExample(next, true);
+        setTranscript("");
+      }, reduced ? 250 : 550);
+      micTimeouts.current.push(t2);
+    }, fillDelay);
+    micTimeouts.current.push(t);
+  }
+
+  // Auto-stop recording after 4s if user doesn't stop manually.
+  useEffect(() => {
+    if (micState !== "recording") return;
+    const t = window.setTimeout(() => finishRecording(), 4000);
+    return () => window.clearTimeout(t);
+  }, [micState]);
+
+  // Track timers for cleanup on unmount / role switch.
+  const micTimeouts = useRef<number[]>([]);
+  useEffect(() => () => {
+    micTimeouts.current.forEach((t) => window.clearTimeout(t));
+    micTimeouts.current = [];
+  }, []);
 
   return (
     <section
@@ -103,7 +181,7 @@ export function AIAgentExperience() {
           >
             Natural language → intent → role-aware data access → answer and/or
             action → confirmation where appropriate. Role-aware and constrained
-            by authorization.
+            by authorization. Type a prompt or just talk.
           </p>
         </div>
 
@@ -150,7 +228,7 @@ export function AIAgentExperience() {
             }
           >
             <div className="grid lg:grid-cols-12">
-              {/* Left: example prompts */}
+              {/* Left: example prompts + command history */}
               <div className="border-b border-white/10 p-4 sm:p-5 lg:col-span-4 lg:border-b-0 lg:border-r">
                 <div className="flex items-center justify-between">
                   <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-muted">
@@ -196,9 +274,48 @@ export function AIAgentExperience() {
                   Each prompt is parsed for intent, scoped to your role, and
                   audited before any answer or action is returned.
                 </div>
+
+                {/* Command history */}
+                <div className="mt-4">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-muted">
+                    Recent
+                  </div>
+                  <div className="mt-2 grid gap-1.5">
+                    <AnimatePresence initial={false}>
+                      {history.length === 0 && (
+                        <motion.div
+                          key="empty"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="text-[10px] text-ink-muted/60"
+                        >
+                          Your sent prompts appear here.
+                        </motion.div>
+                      )}
+                      {history.map((h, i) => (
+                        <motion.button
+                          key={`${h.role}-${h.exampleIdx}-${i}`}
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -4 }}
+                          transition={{ duration: 0.2 }}
+                          onClick={() => replayHistory(h)}
+                          className="group flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.02] px-2.5 py-1.5 text-left text-[11px] text-ink-muted transition-colors hover:border-brand/30 hover:bg-brand/10 hover:text-ink-foreground"
+                          aria-label={`Replay: ${h.text}`}
+                        >
+                          <span className="shrink-0 rounded bg-white/10 px-1 py-0.5 text-[9px] font-medium uppercase tracking-wide text-ink-muted group-hover:bg-brand/20">
+                            {h.role === "IPD / Nurse" ? "IPD" : h.role.slice(0, 4)}
+                          </span>
+                          <span className="truncate">{h.text}</span>
+                        </motion.button>
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                </div>
               </div>
 
-              {/* Right: exchange */}
+              {/* Right: exchange + voice input bar */}
               <div className="p-4 sm:p-5 lg:col-span-8">
                 <AnimatePresence mode="wait">
                   <motion.div
@@ -226,6 +343,15 @@ export function AIAgentExperience() {
                     />
                   </motion.div>
                 </AnimatePresence>
+
+                {/* Voice input bar */}
+                <VoiceInputBar
+                  micState={micState}
+                  transcript={transcript}
+                  reduced={reduced}
+                  onToggleMic={toggleMic}
+                  placeholder={`Ask anything in ${current.role}'s scope, or tap the mic…`}
+                />
               </div>
             </div>
           </ProductFrame>
@@ -363,5 +489,129 @@ function AIResponseBody({
         </AnimatePresence>
       </div>
     </div>
+  );
+}
+
+/**
+ * VoiceInputBar — faux input field + mic button. Click mic →
+ * recording (animated waveform + "Listening…") → transcribing →
+ * fills transcript, parent sends it. Reduced motion skips the
+ * waveform animation.
+ */
+function VoiceInputBar({
+  micState,
+  transcript,
+  reduced,
+  onToggleMic,
+  placeholder,
+}: {
+  micState: MicState;
+  transcript: string;
+  reduced: boolean;
+  onToggleMic: () => void;
+  placeholder: string;
+}) {
+  const recording = micState === "recording";
+  const transcribing = micState === "transcribing";
+
+  const status = recording
+    ? "Listening… tap to stop"
+    : transcribing
+      ? "Transcribing…"
+      : null;
+
+  return (
+    <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-2.5">
+      <div className="flex items-center gap-2.5">
+        {/* Faux input / transcript display */}
+        <div className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl border border-white/10 bg-ink/40 px-3 py-2.5 text-sm">
+          {recording ? (
+            <>
+              <Waveform active={!reduced} />
+              <span className="text-[11px] text-growth-foreground/90">{status}</span>
+            </>
+          ) : transcribing ? (
+            <>
+              <span className="inline-flex h-4 w-4 items-center justify-center">
+                <motion.span
+                  className="block h-3 w-3 rounded-full border-2 border-brand/30 border-t-brand"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 0.7, repeat: Infinity, ease: "linear" }}
+                />
+              </span>
+              <span className="text-[11px] text-ink-muted">{status}</span>
+            </>
+          ) : transcript ? (
+            <span className="truncate text-ink-foreground">
+              <span className="text-brand">you said: </span>
+              {transcript}
+            </span>
+          ) : (
+            <span className="truncate text-ink-muted/70">{placeholder}</span>
+          )}
+        </div>
+
+        {/* Mic / stop button */}
+        <button
+          type="button"
+          onClick={onToggleMic}
+          aria-label={
+            recording ? "Stop recording" : transcribing ? "Transcribing" : "Start voice input"
+          }
+          disabled={transcribing}
+          className={cn(
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-all",
+            recording
+              ? "bg-rose-500 text-white shadow-lg shadow-rose-500/30"
+              : transcribing
+                ? "bg-white/5 text-ink-muted"
+                : "bg-brand text-brand-foreground hover:bg-brand/90 shadow-lg shadow-brand/30"
+          )}
+        >
+          {recording ? (
+            <Square className="h-4 w-4 fill-current" />
+          ) : transcribing ? (
+            <MicOff className="h-4 w-4 opacity-50" />
+          ) : (
+            <Mic className="h-5 w-5" />
+          )}
+        </button>
+      </div>
+      <div className="mt-1.5 px-1 text-[10px] text-ink-muted/60">
+        Voice input is illustrative. Doctorooms AI is role-scoped — it only
+        acts on what your role is authorized to access.
+      </div>
+    </div>
+  );
+}
+
+/** Waveform — 5 animated bars; reduced-motion renders static bars. */
+function Waveform({ active }: { active: boolean }) {
+  const bars = [0.5, 0.9, 0.6, 1, 0.4];
+  return (
+    <span className="flex h-5 items-center gap-[3px]" aria-hidden>
+      {bars.map((h, i) => (
+        <motion.span
+          key={i}
+          className="block w-[3px] rounded-full bg-growth"
+          animate={
+            active
+              ? { height: [`${h * 40}%`, `${h * 100}%`, `${h * 40}%`] }
+              : { height: `${h * 60}%` }
+          }
+          transition={
+            active
+              ? {
+                  duration: 0.8 + i * 0.12,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  repeatType: "mirror",
+                }
+              : { duration: 0 }
+          }
+          style={{ height: `${h * 60}%` }}
+        />
+      ))}
+    </span>
   );
 }
