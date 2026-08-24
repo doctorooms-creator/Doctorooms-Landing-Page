@@ -181,6 +181,11 @@
   kbd {
     @apply inline-flex items-center justify-center rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-semibold text-foreground;
     line-height: 1;
+    box-shadow: 0 1px 0 0 oklch(0.18 0.03 245 / 0.06);
+  }
+  kbd kbd {
+    /* nested kbd chips inside hint chips — flatten shadow */
+    box-shadow: none;
   }
 }
 
@@ -379,6 +384,10 @@
 @layer utilities {
   .text-balance { text-wrap: balance; }
   .text-pretty { text-wrap: pretty; }
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "ss01" 1;
+  }
 
   .bg-grid {
     background-image:
@@ -400,5 +409,24 @@
   .mask-fade-b {
     -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
             mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+  }
+
+  /* Subtle inner top hairline for premium dark surfaces */
+  .edge-top-highlight {
+    position: relative;
+  }
+  .edge-top-highlight::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      oklch(1 0 0 / 0.18),
+      transparent
+    );
+    pointer-events: none;
+    border-radius: inherit;
   }
 }

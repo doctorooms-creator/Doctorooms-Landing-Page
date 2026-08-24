@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,14 +9,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowUp, Keyboard, X } from "lucide-react";
+import { ArrowUp, Keyboard, ShieldCheck, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDemoDialog } from "./demo-dialog";
 import { track } from "@/lib/analytics";
 import { KEYBOARD_SHORTCUTS } from "@/data/doctorooms";
+import { AdminOverlay } from "./admin-overlay";
 
 /**
- * BackToTop — floating action cluster + global keyboard shortcuts.
+ * BackToTop — floating action cluster + global keyboard shortcuts + admin overlay.
  *
  * Visible affordances (bottom-right, appear after 1 viewport of scroll):
  *   • "?"  — open this keyboard-shortcuts help dialog
@@ -24,9 +25,10 @@ import { KEYBOARD_SHORTCUTS } from "@/data/doctorooms";
  *   • ↑    — scroll back to the top
  *
  * Global keyboard shortcuts (ignored while typing / with modifiers):
- *   B  → open Book-a-Demo
- *   T  → scroll to top
- *   ?  → open this shortcuts help dialog
+ *   B           → open Book-a-Demo
+ *   T           → scroll to top
+ *   ?           → open this shortcuts help dialog
+ *   Shift + A   → open the in-page team admin panel (demo-request triage)
  *   Esc is handled natively by Radix dialogs.
  *
  * Reduced-motion safe (CSS handles transitions). Mobile-friendly: the
@@ -37,6 +39,7 @@ export function BackToTop() {
   const [show, setShow] = useState(false);
   const [hint, setHint] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const { open } = useDemoDialog();
 
   useEffect(() => {
@@ -48,9 +51,14 @@ export function BackToTop() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  const openAdmin = useCallback(() => {
+    track("admin_panel_open", { source: "keyboard_shortcut" });
+    setAdminOpen(true);
+  }, []);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      // Ignore when typing in inputs / editable regions / with modifiers.
+      // Ignore when typing in inputs / editable regions / with plain modifiers.
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
       const editable =
@@ -58,7 +66,17 @@ export function BackToTop() {
         tag === "TEXTAREA" ||
         tag === "SELECT" ||
         target?.isContentEditable;
-      if (editable || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (editable) return;
+
+      // Shift + A → admin panel (allowed even when not typing)
+      if (e.shiftKey && (e.key === "A" || e.key === "a")) {
+        e.preventDefault();
+        openAdmin();
+        return;
+      }
+
+      // Other shortcuts ignore modifier keys
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
 
       const key = e.key.toLowerCase();
       if (key === "b") {
@@ -76,7 +94,7 @@ export function BackToTop() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  }, [open, openAdmin]);
 
   const toTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -85,6 +103,12 @@ export function BackToTop() {
   const openHelp = () => {
     track("keyboard_shortcuts_open", { source: "floating_button" });
     setHelpOpen(true);
+  };
+
+  const openAdminFromHelp = () => {
+    track("admin_panel_open", { source: "shortcuts_dialog" });
+    setHelpOpen(false);
+    setAdminOpen(true);
   };
 
   return (
@@ -198,8 +222,27 @@ export function BackToTop() {
               Close
             </Button>
           </div>
+
+          <div className="mt-1 flex flex-wrap items-center gap-2 rounded-lg border border-brand/20 bg-brand-soft/30 px-3 py-2.5">
+            <ShieldCheck className="h-4 w-4 shrink-0 text-brand" />
+            <div className="min-w-0 flex-1 text-[11px] text-muted-foreground">
+              Team member? Open the in-page admin panel to triage inbound
+              demo requests.
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={openAdminFromHelp}
+              className="h-8 border-brand/40 text-brand hover:bg-brand-soft/40 hover:text-brand"
+            >
+              Open team admin
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
+
+      {/* In-page team admin panel */}
+      <AdminOverlay open={adminOpen} onOpenChange={setAdminOpen} />
     </>
   );
 }

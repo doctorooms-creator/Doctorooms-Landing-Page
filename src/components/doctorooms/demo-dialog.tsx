@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { track } from "@/lib/analytics";
-import { CalendarCheck, Loader2, ShieldCheck, Sparkles } from "lucide-react";
+import { CalendarCheck, CheckCircle2, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 
 type DemoContextValue = { open: () => void; close: () => void };
 const DemoContext = createContext<DemoContextValue | null>(null);
@@ -58,6 +59,7 @@ function DemoFormDialog({
   onOpenChange: (v: boolean) => void;
 }) {
   const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -81,12 +83,18 @@ function DemoFormDialog({
       });
       if (!res.ok) throw new Error("request failed");
       track("demo_form_submit", { orgType: payload.orgType, size: payload.size });
-      toast({
-        title: "Demo request received",
-        description: "Our team will reach out within one business day.",
-      });
-      onOpenChange(false);
-      (e.target as HTMLFormElement).reset();
+      track("demo_form_success", { orgType: payload.orgType });
+      // Brief on-brand success state (1.2s) before close + toast.
+      setSuccess(true);
+      setTimeout(() => {
+        setSuccess(false);
+        toast({
+          title: "Demo request received",
+          description: "Our team will reach out within one business day.",
+        });
+        onOpenChange(false);
+        (e.target as HTMLFormElement).reset();
+      }, 1200);
     } catch {
       toast({
         title: "Something went wrong",
@@ -99,8 +107,11 @@ function DemoFormDialog({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] overflow-y-auto scroll-soft sm:max-w-[560px]">
+    <Dialog open={isOpen} onOpenChange={(v) => {
+      if (!v && success) return; // ignore outer close during success flash
+      onOpenChange(v);
+    }}>
+      <DialogContent className="relative max-h-[92vh] overflow-y-auto scroll-soft sm:max-w-[560px]">
         <DialogHeader>
           <div className="mb-1 flex items-center gap-2 text-brand">
             <Sparkles className="h-4 w-4" />
@@ -176,10 +187,10 @@ function DemoFormDialog({
           </div>
 
           <DialogFooter className="gap-2">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting}>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting || success}>
               Maybe later
             </Button>
-            <Button type="submit" disabled={submitting}>
+            <Button type="submit" disabled={submitting || success}>
               {submitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" /> Sending…
@@ -192,6 +203,66 @@ function DemoFormDialog({
             </Button>
           </DialogFooter>
         </form>
+
+        {/* Success overlay — on-brand pulse + checkmark, 1.2s */}
+        <AnimatePresence>
+          {success && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-3 rounded-xl bg-background/95 backdrop-blur-sm"
+              role="status"
+              aria-live="polite"
+            >
+              <motion.div
+                initial={{ scale: 0.4, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 220, damping: 18, mass: 0.9 }}
+                className="relative flex h-16 w-16 items-center justify-center"
+              >
+                {/* Pulse rings */}
+                <motion.span
+                  aria-hidden
+                  className="absolute inset-0 rounded-full bg-brand/30"
+                  initial={{ scale: 0.8, opacity: 0.6 }}
+                  animate={{ scale: 1.6, opacity: 0 }}
+                  transition={{ duration: 0.9, repeat: Infinity, ease: "easeOut" }}
+                />
+                <motion.span
+                  aria-hidden
+                  className="absolute inset-1 rounded-full bg-brand/20"
+                  initial={{ scale: 0.8, opacity: 0.6 }}
+                  animate={{ scale: 1.4, opacity: 0 }}
+                  transition={{ duration: 0.9, delay: 0.15, repeat: Infinity, ease: "easeOut" }}
+                />
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-brand to-growth text-white shadow-lg shadow-brand/30">
+                  <motion.span
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: "spring", stiffness: 240, damping: 16, delay: 0.15 }}
+                  >
+                    <CheckCircle2 className="h-8 w-8" strokeWidth={2.5} />
+                  </motion.span>
+                </div>
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.25 }}
+                className="text-center"
+              >
+                <div className="text-base font-semibold text-foreground">
+                  Request received
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  We&apos;ll reach out within one business day.
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </DialogContent>
     </Dialog>
   );

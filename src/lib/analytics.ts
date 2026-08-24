@@ -19,7 +19,10 @@ export type AnalyticsEvent =
   | "demo_form_submit"
   | "pricing_or_contact_intent"
   | "faq_expand"
-  | "keyboard_shortcuts_open";
+  | "keyboard_shortcuts_open"
+  | "admin_panel_open"
+  | "admin_status_change"
+  | "demo_form_success";
 
 type Payload = Record<string, string | number | boolean | undefined>;
 

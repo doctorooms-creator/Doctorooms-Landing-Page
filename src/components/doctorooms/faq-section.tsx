@@ -131,18 +131,18 @@ export function FAQSection() {
                   <AccordionItem
                     key={item.key}
                     value={item.key}
-                    className="rounded-xl px-3 transition-colors data-[state=open]:bg-brand-soft/40 sm:px-4"
+                    className="group rounded-xl px-3 transition-colors hover:bg-muted/40 data-[state=open]:bg-brand-soft/40 data-[state=open]:shadow-[inset_0_0_0_1px_oklch(0.45_0.1_188/0.18)] sm:px-4"
                   >
-                    <AccordionTrigger className="items-center text-left text-sm font-semibold text-foreground sm:text-base">
+                    <AccordionTrigger className="items-center text-left text-sm font-semibold text-foreground transition-colors hover:text-brand sm:text-base">
                       <span className="flex items-baseline gap-3">
-                        <span className="text-[11px] font-mono font-medium text-brand">
+                        <span className="text-[11px] font-mono font-medium text-brand transition-transform group-data-[state=open]:translate-y-0">
                           {String(idx + 1).padStart(2, "0")}
                         </span>
                         <span className="text-pretty">{item.q}</span>
                       </span>
                     </AccordionTrigger>
                     <AccordionContent className="text-sm leading-relaxed text-muted-foreground sm:pl-8">
-                      <span className="block pl-0 sm:pl-0">{item.a}</span>
+                      <span className="block border-l border-brand/20 pl-3 sm:pl-0 sm:border-0 sm:pl-0">{item.a}</span>
                     </AccordionContent>
                   </AccordionItem>
                 ))}

@@ -283,6 +283,7 @@ export const KEYBOARD_SHORTCUTS = [
   { keys: ["?"], label: "Open this keyboard shortcuts panel", desc: "You are here." },
   { keys: ["Esc"], label: "Close any open dialog", desc: "Dismiss overlays and restore focus." },
   { keys: ["T"], label: "Scroll back to the top", desc: "Jump to the hero of the page." },
+  { keys: ["Shift", "A"], label: "Open the team admin panel", desc: "Review inbound demo requests + triage status." },
 ] as const;
 
 export const ROLLOUT_STEPS = [

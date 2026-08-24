@@ -7,6 +7,18 @@ import { db } from "@/lib/db";
 // page never breaks the conversion path.
 export const runtime = "nodejs";
 
+export const DEMO_STATUSES = [
+  "new",
+  "contacted",
+  "scheduled",
+  "archived",
+] as const;
+type DemoStatus = (typeof DEMO_STATUSES)[number];
+
+function isDemoStatus(v: unknown): v is DemoStatus {
+  return typeof v === "string" && (DEMO_STATUSES as readonly string[]).includes(v);
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => null);
@@ -71,9 +83,11 @@ export async function GET() {
         id: true,
         name: true,
         email: true,
+        phone: true,
         org: true,
         orgType: true,
         size: true,
+        note: true,
         source: true,
         status: true,
         createdAt: true,
@@ -82,6 +96,66 @@ export async function GET() {
     return NextResponse.json({ ok: true, count: rows.length, rows });
   } catch (e) {
     console.error("[demo-request] list error:", e);
+    return NextResponse.json(
+      { ok: false, error: "Server error" },
+      { status: 500 }
+    );
+  }
+}
+
+// PATCH /api/demo?id=<cuid> { status: "contacted" | "scheduled" | ... }
+// Updates the status of a single demo request. The team uses this from the
+// in-page admin overlay to triage inbound leads (new → contacted → scheduled
+// → archived). Returns the updated row.
+export async function PATCH(req: Request) {
+  try {
+    const url = new URL(req.url);
+    const id = url.searchParams.get("id");
+    if (!id) {
+      return NextResponse.json(
+        { ok: false, error: "Missing id" },
+        { status: 400 }
+      );
+    }
+
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return NextResponse.json(
+        { ok: false, error: "Invalid payload" },
+        { status: 400 }
+      );
+    }
+
+    const rawStatus = (body as Record<string, unknown>).status;
+    if (!isDemoStatus(rawStatus)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: `Invalid status. Allowed: ${DEMO_STATUSES.join(", ")}`,
+        },
+        { status: 400 }
+      );
+    }
+
+    const updated = await db.demoRequest.update({
+      where: { id: String(id).slice(0, 64) },
+      data: { status: rawStatus },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        org: true,
+        orgType: true,
+        size: true,
+        source: true,
+        status: true,
+        createdAt: true,
+      },
+    });
+
+    return NextResponse.json({ ok: true, row: updated });
+  } catch (e) {
+    console.error("[demo-request] update error:", e);
     return NextResponse.json(
       { ok: false, error: "Server error" },
       { status: 500 }

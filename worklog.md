@@ -466,3 +466,83 @@ Task: Assess project status, QA via agent-browser, fix bugs or add features + im
   5. **Micro-interactions**: add a subtle confetti / success-state micro-animation to the demo form on successful submit (the toast already appears; a brief visual celebration could lift the conversion moment).
 
 Handoff: next cron round should pick up item #2 (in-page admin overlay for demo-request review — makes the persistence layer usable without a new route) or #1 (code-splitting for performance). The site now has a complete, conversion-optimized narrative: discovery → problem → comparison(deeplinked) → acquisition → doctor → AI → video → queue → journey → operations → org-fit → IPD → roles → trust → FAQ → ROI → rollout → final CTA, with real lead persistence, SEO foundations (OG + JSON-LD), premium UX (keyboard shortcuts, chapter nav, mobile sticky CTA), and a usable /api/demo GET endpoint.
+
+---
+Task ID: 15 (cron round 5)
+Agent: main (15-min webDevReview loop, continued)
+Task: Assess project status, QA via agent-browser, fix bugs or add features + improve styling.
+
+## 1. Current Project Status (assessment)
+- Project is STABLE. Dev server healthy on port 3000; `GET / 200` sub-second; no runtime/console errors.
+- Prior round (Task 14) shipped: clickable comparison rows + 4-step rollout timeline. All verified working.
+- QA this round: reloaded page, set up console.error + page-error capture, scrolled full document height (21991px) → 0 errors, 0 console errors. No bugs to fix.
+- `bun run lint` → 0 errors, 0 warnings.
+- Phase is stable → moved to NEW feature/styling additions this round, picking up item #2 (in-page admin overlay for demo-request review) + the in-flight demo success micro-animation (item #5 from the prior round's micro-interactions note).
+
+## 2. Completed modifications this round
+
+### New feature: in-page team admin overlay (no new route, per single-route rule)
+- `src/app/api/demo/route.ts` — added a PATCH handler for inline status updates:
+  * `PATCH /api/demo?id=<cuid> { status }` validates against an allowed-statuses allowlist (`new` / `contacted` / `scheduled` / `archived`), updates the row, returns the updated record.
+  * GET handler now also returns `phone` + `note` (was previously excluded) so the team has the full lead context in the admin panel.
+  * Added a `DEMO_STATUSES` constant exported for client use.
+- `src/components/doctorooms/admin-overlay.tsx` — new full-featured in-page team panel:
+  * **Open via `Shift + A`** (registered in `BackToTop` so all global shortcuts live in one place) **or** the new "Open team admin" button at the bottom of the keyboard-shortcuts help dialog (discoverable path for users who haven't memorized the shortcut).
+  * Header: "Team admin" + `demo-requests` badge + sandbox disclaimer (replace with real auth before sharing URL).
+  * **KPI row** (4 cards): New / Contacted / Scheduled / Archived counts — clicking a KPI card filters by that status (clicking again clears the filter). Tone-coded icons (Inbox / Mail / Clock / CheckCircle2) and color tokens (brand/amber/growth/muted).
+  * **Toolbar**: search input (name/email/org/orgType, case-insensitive, debounced via React state), status filter select, Refresh button (re-fetches with `cache: "no-store"`), Export CSV button (downloads filtered rows as `doctorooms-demo-requests-YYYY-MM-DD.csv`), and a "X of Y shown · updated {timeAgo}" status line.
+  * **Body**: list of demo requests. Each row shows name + status badge (tone-coded) + orgType + size + relative time ("15m ago") + org + email (mailto: link) + phone (tel: link) + note (truncated to 2 lines, italicized quote). Right side has a status `<Select>` dropdown + an "→ {next}" advance button for quick triage (new → contacted → scheduled → archived → new).
+  * Tracks `admin_panel_open { source: "keyboard_shortcut" | "shortcuts_dialog" }` on open and `admin_status_change { id, from, to, org }` on every PATCH.
+  * Reduced-motion safe (CSS only — framer-motion not used here, all transitions via Tailwind classes).
+  * Skeleton loaders for initial fetch; empty state with "Submit the Book-a-Demo form to see leads here" CTA; error banner with AlertCircle if the API fails.
+  * Footer: `{total} total · {new} new · {scheduled} scheduled` + "Tip: press Esc to close, or Shift+A to reopen later."
+- `src/components/doctorooms/back-to-top.tsx` — added `Shift + A` keyboard shortcut + admin overlay state:
+  * Shortcuts list now shows 5 entries (added "Open the team admin panel — Review inbound demo requests + triage status. — Shift + A").
+  * Shift+A is allowed even when not typing (it's a power-user shortcut). Other shortcuts still ignore modifier keys.
+  * The keyboard-shortcuts help dialog now has a brand-tinted footer card with a "Open team admin" button that closes the help dialog and opens the admin panel directly (cross-link discoverability).
+- `src/lib/analytics.ts` — added `admin_panel_open`, `admin_status_change`, `demo_form_success` to the `AnalyticsEvent` union.
+- `src/data/doctorooms.ts` — `KEYBOARD_SHORTCUTS` extended with the `["Shift", "A"]` entry.
+
+### New feature: success micro-animation on demo form submit
+- `src/components/doctorooms/demo-dialog.tsx` — added an `AnimatePresence` success overlay:
+  * On successful POST: track `demo_form_success`, set `success=true`, render an `absolute inset-0 z-50` overlay with `bg-background/95 backdrop-blur-sm` covering the form (DialogContent now `relative`).
+  * **Visual**: a 16×16 gradient circle (brand → growth) with the CheckCircle2 icon springing in, surrounded by two concentric pulse-ring `<motion.span>`s that expand + fade on a 0.9s repeating loop. Below: "Request received" + "We'll reach out within one business day." (fade-up, 0.2s delay).
+  * Auto-dismisses after 1.2s → toast fires → dialog closes → form resets. The `onOpenChange` is guarded so user-driven closes during the success flash are ignored (no half-state).
+  * `Maybe later` and `Request demo` buttons both `disabled` during the success flash.
+  * Reduced-motion: framer-motion respects `prefers-reduced-motion` (animations short-circuit).
+
+### Styling polish
+- `src/app/globals.css`:
+  * Added `.tabular-nums` utility (`font-variant-numeric: tabular-nums` + `tnum` + `ss01` features) for stable numeric displays — applied to admin KPI counts, "X of Y shown" counter, and footer total/new/scheduled counts so digits don't reflow on filter changes.
+  * Added `.edge-top-highlight` utility (subtle inner top hairline for premium dark surfaces).
+  * Enhanced `kbd` base style with a faint inner shadow (`0 1px 0 0 oklch(0.18 0.03 245 / 0.06)`) for a more tactile feel. Added `kbd kbd` rule to flatten the shadow for nested kbd chips inside hint chips.
+- `src/components/doctorooms/faq-section.tsx` — FAQ accordion visual polish:
+  * AccordionItem now has `group` + `hover:bg-muted/40` + `data-[state=open]:bg-brand-soft/40` + an `inset 0 0 0 1px` brand-tinted shadow ring when open (subtle "selected" affordance).
+  * AccordionTrigger has `transition-colors hover:text-brand` so the question text turns brand-teal on hover.
+  * AccordionContent has a left-border accent on mobile (`border-l border-brand/20 pl-3`) that disappears on `sm:` — gives the answer a clear visual hierarchy on mobile where the parent's brand-soft tint is less impactful.
+- `src/components/doctorooms/admin-overlay.tsx` — applied `.tabular-nums` to KPI counts, "X of Y shown" counter, and footer totals.
+
+## 3. Verification (agent-browser + curl)
+- Reload → 0 page errors, 0 console errors. Reinstalled error listeners, scrolled full document height (25000px / 21991 docHeight) → 0 errors after traversal.
+- `Shift + A` keyboard shortcut → admin dialog opens immediately. Title: "Team admin / demo-requests". KPI row correctly shows NEW 1 (Dr. Priya Sharma from prior round, status still "contacted" from prior QA), CONTACTED 0, SCHEDULED 0, ARCHIVED 0.
+- Clicked "→ Contacted" advance button on Dr. Priya Sharma's row → KPI updated in-place (NEW 0, CONTACTED 1), row badge changed to "Contacted", advance button now reads "→ Scheduled". `curl /api/demo` confirms the status persisted (`status:"contacted"`).
+- Search: typed "priya" in search → 1 of 1 row visible. Typed "nonexistent" → 0 rows visible, empty state shows "No matches".
+- Cross-link: opened "?" help dialog → all 5 shortcuts render including the new Shift+A entry → clicked "Open team admin" at the bottom of the help dialog → help dialog closed, admin panel opened directly. KPIs refresh from the API.
+- Help dialog: 5 shortcut rows confirmed (B / ? / Esc / T / Shift+A).
+- Demo form success animation: opened dialog via `B`, filled "QA Round / qa@round.in / QA Hospital" → clicked Request demo → POST /api/demo 200 in 19ms (dev log shows `INSERT INTO main.DemoRequest` SQL) → success overlay appeared ("Request received" + checkmark pulse) for 1.2s → dialog closed → toast notification → form reset. `curl /api/demo` confirms the third row persisted with `status:"new"`.
+- FAQ accordion polish: opened #faq → clicked item 01 → `[data-state=open]` set, content visible (offsetHeight > 0), brand-soft tint + inset ring applied via `group` + `data-[state=open]:` classes.
+- `bun run lint` → 0 errors, 0 warnings.
+- Screenshots saved: `download/admin-overlay.png`, `download/demo-form-success-anim.png`, `download/faq-polish.png`, `download/faq-open-state.png`, `download/demo-form-before-submit.png`.
+- Regression: OrgFit, AI voice, keyboard shortcuts, mobile sticky CTA, comparison table deeplinks, rollout timeline, JSON-LD, OG image — all unchanged and still working.
+- DB state after this round: 3 DemoRequest rows (Dr. Priya Sharma / Test User / QA Round), 1 in "contacted" status, 2 in "new".
+
+## 4. Unresolved issues / risks + next-phase recommendations
+- No bugs introduced. The success overlay uses `absolute inset-0` on `DialogContent` which is now `relative`; if the form is taller than viewport the overlay covers the full scrollable area (good — content is covered). DialogClose (X) button is in the header above the overlay z-index, but the overlay has `z-50` so it covers the close button during the 1.2s flash; the success flash auto-dismisses so users can't get stuck.
+- **Recommended next-phase work** (priority order):
+  1. **Performance — code-splitting**: still pending. Use `next/dynamic` with `ssr:false` for the heaviest GSAP-pinned sections (PatientJourney, RoleOrbit, IPDJourney) + add a `loading.tsx` skeleton. Initial render still sub-second, so this is an optimization.
+  2. **Lighthouse / Core Web Vitals**: run a real Lighthouse pass to baseline LCP/CLS/INP. The admin overlay only loads when opened (lazy fetch), so it doesn't affect initial render.
+  3. **A11y audit (axe-core)**: the admin overlay has many interactive controls — verify the Select + advance button + KPI filter buttons have proper ARIA. The success overlay has `role="status"` + `aria-live="polite"`.
+  4. **Admin overlay enhancements**: add note-taking (PATCH a note field), sort by createdAt asc/desc, batch archive, and a deep-link like `#admin` that opens the overlay (preserves the single-route rule but enables direct-linking).
+  5. **Comparison section interactivity**: a deep-link already exists per-row; consider adding a "Compare side-by-side" view that opens a focused modal with the chosen row vs the full Doctorooms row.
+
+Handoff: next cron round should pick up item #1 (code-splitting for performance) or item #4 (admin overlay enhancements — note-taking + sort + batch archive makes the triage tool genuinely useful). The site now has a complete conversion path (discovery → comparison → story → FAQ → ROI → rollout → demo form → success animation → persisted lead), a usable team triage overlay (Shift+A), SEO foundations (OG + JSON-LD), and premium UX (keyboard shortcuts, chapter nav, mobile sticky CTA, success micro-animation).
