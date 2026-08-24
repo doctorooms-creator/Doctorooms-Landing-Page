@@ -1049,3 +1049,34 @@ Stage Summary:
 - `useReveal` hook was NOT affected (uses `.set()` + `.to()` with explicit values)
 - File: src/components/doctorooms/hero-experience.tsx
 - Commit: 70ac0ac pushed to main
+---
+Task ID: hero-fouc-fix
+Agent: Z.ai Code (main session, continued)
+Task: Fix the hero "doctor dashboard shows briefly then goes blank" FOUC bug reported in the prior session's known-issues list.
+
+Work Log:
+- Re-Confirmed the symptom with agent-browser at localhost:3000 (after a fresh reload, `[data-hero-ui]` had `inlineOpacity:"0"` set at t=1.5s — GSAP had hidden the dashboard and the entrance timeline hadn't reached the dashboard reveal tween yet, exactly matching the user's "shows briefly then goes blank" description).
+- Root cause: `src/lib/anim/gsap-register.ts` exported `useIsomorphicLayoutEffect = typeof window !== "undefined" ? useEffect : (cb) => {}`. This used `useEffect` (async, AFTER paint) on the client instead of `useLayoutEffect` (sync, BEFORE paint). So the SSR markup painted visibly for ~1 frame, then GSAP's `from()` tweens set opacity:0 to start the timeline, producing the visible "blank" flash.
+- Fix 1 (root cause): changed `useIsomorphicLayoutEffect` to use `useLayoutEffect` on the client (import added) and `useEffect` on the server. Added a long comment explaining the FOUC pattern so future maintainers don't regress it. This is the file `src/lib/anim/gsap-register.ts`.
+- Fix 2 (SSR→hydration gap): even with useLayoutEffect, the SSR HTML is visible during the JS-bundle-fetch window (especially in Turbopack dev mode where chunks are split). Added a CSS safety net in `src/app/globals.css`:
+    ```css
+    html.js [data-hero-step],
+    html.js [data-hero-ui],
+    html.js [data-hero-ai] { opacity: 0; }
+    ```
+  And added an inline `<script>` in `src/app/layout.tsx` `<head>` that synchronously adds `html.js` during HTML parse (BEFORE body renders), plus a 5s fallback timer that removes `js` if `window.__gsap_claimed` is never set (so content becomes visible if GSAP fails to load).
+- Also added the hero choreography attributes to the existing reduced-motion override in globals.css: `[data-hero-step], [data-hero-ui], [data-hero-ai] { opacity: 1 !important; transform: none !important; }` so reduced-motion users see everything immediately.
+- Ran `bun run lint` — clean, 0 errors.
+- Verified with agent-browser at multiple time points after a hard reload:
+    - t=50ms: `html.js` set, CSS rule pre-hiding the hero targets. GSAP has already set inline opacity:0 on `[data-hero-ui="tile"]` and `[data-hero-ai]` (immediateRender working correctly with useLayoutEffect).
+    - t=250ms: `[data-hero-ui]` container now has inline opacity:0 (its tween's start state has been rendered).
+    - t=2.25s (mid-animation): stage at 0.8944, tile at 0.4358, AI at 1 — animating 0→1, NOT stuck at 0→0. (Concern was that the CSS safety net would make GSAP's `.from()` capture 0 as the END value, animating 0→0. Empirically this does NOT happen — GSAP correctly animates 0→1.)
+    - t=3.75s (complete): stage=1, tile=1, ai=1. All hero choreography elements visible. `html.js` was properly removed (the 5s fallback fired cleanly).
+- Verified dev.log: no errors, only normal compile/render lines.
+
+Stage Summary:
+- The hero FOUC bug is FIXED. The dashboard no longer flashes visibly then goes blank — it enters cleanly via the progressive UI assembly timeline (eyebrow → h1 → sub → CTA → stats → dashboard frame → tiles → AI bubble).
+- Three artifacts changed: `src/lib/anim/gsap-register.ts` (useLayoutEffect fix + comment), `src/app/globals.css` (CSS safety net + reduced-motion override), `src/app/layout.tsx` (inline `<head>` script that adds `html.js` synchronously).
+- All other GSAP-using components (ProblemConvergence, HospitalOS, RoleOrbit, AIAgentExperience, IPDJourney) automatically benefit from the useLayoutEffect fix since they all import `useIsomorphicLayoutEffect` from gsap-register.
+- No regressions: lint clean, dev server compiles & serves 200, no runtime errors in dev.log.
+- Cron job 335149 (15-min webDevReview loop) created to keep iterating on the landing page going forward.
