@@ -101,6 +101,7 @@ export function QueueExperience() {
 
       <div className="container-px mx-auto max-w-7xl">
         {/* Header */}
+        <div className="mx-auto mb-2 h-px w-24 ribbon-stripe" aria-hidden />
         <div className="mx-auto max-w-3xl text-center">
           <div className="eyebrow text-brand" data-anim>
             Chapter 07 — Smart Queue
@@ -133,7 +134,7 @@ export function QueueExperience() {
           >
             <div
               ref={stageRef}
-              className="relative grid gap-4 p-4 sm:p-5 lg:grid-cols-12"
+              className="scan-line relative grid gap-4 p-4 sm:p-5 lg:grid-cols-12"
             >
               {/* Now-calling card */}
               <div className="lg:col-span-5">
@@ -187,6 +188,35 @@ export function QueueExperience() {
               </p>
             </div>
           ))}
+        </div>
+
+        {/* Live activity ticker — a "live data" affordance that shows the
+            kind of micro-events the queue system emits (token issued, called,
+            cleared). Pure decoration — no real backend subscription needed. */}
+        <div
+          data-anim
+          className="ticker-quote mt-6 h-7 w-full overflow-hidden rounded-full border border-white/10 bg-white/[0.03] text-[11px] text-ink-muted"
+          role="status"
+          aria-live="polite"
+          aria-label="Live queue activity feed"
+        >
+          <span className="whitespace-nowrap pl-3 text-ink-foreground/80">
+            <span className="text-growth">●</span> A-018 issued · ENT OPD
+            <span className="mx-3 text-ink-muted/40">|</span>
+            <span className="text-brand">●</span> A-013 called → Room 2
+            <span className="mx-3 text-ink-muted/40">|</span>
+            <span className="text-growth">●</span> A-011 cleared · consult complete
+            <span className="mx-3 text-ink-muted/40">|</span>
+            <span className="text-brand">●</span> Dr. Mehta marked available
+            <span className="mx-3 text-ink-muted/40">|</span>
+            <span className="text-growth">●</span> A-018 issued · ENT OPD
+            <span className="mx-3 text-ink-muted/40">|</span>
+            <span className="text-brand">●</span> A-013 called → Room 2
+            <span className="mx-3 text-ink-muted/40">|</span>
+            <span className="text-growth">●</span> A-011 cleared · consult complete
+            <span className="mx-3 text-ink-muted/40">|</span>
+            <span className="text-brand">●</span> Dr. Mehta marked available
+          </span>
         </div>
       </div>
     </section>

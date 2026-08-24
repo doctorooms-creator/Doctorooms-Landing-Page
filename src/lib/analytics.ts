@@ -39,6 +39,11 @@ export type AnalyticsEvent =
   | "admin_mailto_open"
   | "admin_export_breakdown"
   | "comparison_filter_toggle"
+  | "admin_view_mode_toggle"
+  | "admin_group_expand"
+  | "outcome_compare_open"
+  | "outcome_compare_pick"
+  | "outcome_compare_share"
   | "demo_form_success";
 
 type Payload = Record<string, string | number | boolean | undefined>;

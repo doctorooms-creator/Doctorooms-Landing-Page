@@ -48,6 +48,9 @@ export function TrustSection() {
       </div>
 
       <div className="container-px mx-auto max-w-7xl">
+        {/* Premium chapter header — ribbon-stripe accent signals
+            authenticated / verified / secure content. */}
+        <div className="mx-auto mb-2 h-px w-24 ribbon-stripe" aria-hidden />
         <div className="mx-auto max-w-3xl text-center">
           <div className="eyebrow text-brand" data-anim>
             Chapter 12 — Trust &amp; Security
@@ -93,10 +96,12 @@ export function TrustSection() {
           })}
         </div>
 
-        {/* Visible disclaimer — no unverified certification claims */}
+        {/* Visible disclaimer — no unverified certification claims.
+            Uses .tape-edge for a "team-stickies" feel that softens the
+            legal-jargon weight of a disclaimer. */}
         <div
           data-anim
-          className="mx-auto mt-12 max-w-3xl rounded-xl border border-border/70 bg-muted/40 p-4 sm:p-5"
+          className="tape-edge mx-auto mt-16 max-w-3xl rounded-xl border border-border/70 bg-muted/40 p-4 sm:p-5"
         >
           <div className="flex gap-3">
             <ShieldCheck

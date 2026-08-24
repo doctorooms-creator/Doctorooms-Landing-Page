@@ -182,9 +182,14 @@ export function ROICalculator() {
           {/* RIGHT — Output panel */}
           <div
             data-anim
-            className="glow-ring relative overflow-hidden rounded-2xl border border-brand/30 bg-gradient-to-br from-brand-soft to-card p-6 shadow-sm sm:p-8"
+            className="scan-line glow-ring relative overflow-hidden rounded-2xl border border-brand/30 bg-gradient-to-br from-brand-soft to-card p-6 shadow-sm sm:p-8"
           >
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand to-transparent opacity-60" />
+            {/* Ribbon-stripe — a thin brand→growth accent strip above the
+                headline to signal "verified / authenticated / connected"
+                (this is the chapter where the team is showing a real
+                estimate, not a marketing stat). */}
+            <div className="ribbon-stripe mb-3 h-px w-20" aria-hidden />
             <div className="flex items-center gap-2 text-sm font-medium text-brand">
               <TrendingUp className="h-4 w-4" aria-hidden="true" />
               Illustrative estimated annual value

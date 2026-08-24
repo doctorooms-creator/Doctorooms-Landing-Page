@@ -30,17 +30,20 @@ import {
   Check,
   CheckCheck,
   CheckCircle2,
+  ChevronDown,
   ClipboardCopy,
   Clock,
   Download,
   ExternalLink,
   Inbox,
+  ListTree,
   Loader2,
   Mail,
   MailOpen,
   Phone,
   Pencil,
   RefreshCw,
+  Rows3,
   Search,
   ShieldCheck,
   Trash2,
@@ -66,6 +69,8 @@ import {
  *   • Per-row Copy email + Open mailto (pre-filled compose) + bulk Copy selected emails
  *   • Export filtered rows to CSV (flat) or by-status (grouped w/ status column)
  *   • KPI counts at a glance — click a KPI to filter by that status
+ *   • View mode toggle: flat list (default) or grouped-by-status with
+ *     collapsible sections + per-status counts (a "pipeline" view)
  *
  * Reduced-motion safe (CSS only). No auth in this demo sandbox; the
  * comment in the header makes that clear to the team.
@@ -158,6 +163,16 @@ export function AdminOverlay({
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [bulkCopied, setBulkCopied] = useState(false);
+  // View mode: flat (default) or grouped-by-status pipeline view. Driven
+  // by a segmented control in the toolbar. Grouped view renders rows
+  // bucketed under per-status headers, each collapsible independently.
+  const [viewMode, setViewMode] = useState<"flat" | "grouped">("flat");
+  // Tracks which status groups are collapsed in the grouped view. Defaults
+  // to expanded (empty set). A status is added/removed on click of the
+  // group header.
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    () => new Set()
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -240,6 +255,37 @@ export function AdminOverlay({
     }
     return c;
   }, [rows]);
+
+  // Grouped-by-status view: filters + sorts rows exactly as the flat
+  // view, then buckets them by status. The order of buckets follows the
+  // canonical STATUSES order (new → contacted → scheduled → archived) so
+  // the pipeline reads left-to-right / top-to-bottom in the natural
+  // triage sequence.
+  const groupedBy = useMemo(() => {
+    return STATUSES.map((s) => ({
+      status: s,
+      rows: filtered.filter((r) => r.status === s.value),
+    })).filter((g) => g.rows.length > 0);
+  }, [filtered]);
+
+  function toggleGroup(value: string) {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      track("admin_group_expand", {
+        group: value,
+        collapsed: next.has(value),
+      });
+      return next;
+    });
+  }
+
+  function setViewModeTracked(next: "flat" | "grouped") {
+    if (next === viewMode) return;
+    setViewMode(next);
+    track("admin_view_mode_toggle", { mode: next });
+  }
 
   const allFilteredSelected =
     filtered.length > 0 && filtered.every((r) => selected.has(r.id));
@@ -539,6 +585,225 @@ export function AdminOverlay({
     setTimeout(() => setBulkCopied(false), 1800);
   }
 
+  // renderRow — closure over all row-level state + handlers. Used by both
+  // the flat list view and the grouped-by-status view so the per-row UI
+  // stays consistent across view modes. Returns a single <li> per row.
+  function renderRow(r: Row) {
+    const meta = statusMeta(r.status);
+    const StatusIcon = meta.icon;
+    const next = STATUS_NEXT[r.status] ?? "new";
+    const isUpdating = updatingId === r.id;
+    const isSelected = selected.has(r.id);
+    const isEditingNote = editingNoteId === r.id;
+    return (
+      <li
+        key={r.id}
+        className={cn(
+          "grid grid-cols-1 gap-3 px-4 py-3.5 transition-colors hover:bg-muted/20 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:px-6",
+          isSelected && "bg-brand-soft/20"
+        )}
+      >
+        <div className="flex min-w-0 items-start gap-3">
+          <input
+            type="checkbox"
+            className="mt-1 h-3.5 w-3.5 shrink-0 accent-brand"
+            checked={isSelected}
+            onChange={() => toggleSelect(r.id)}
+            aria-label={`Select ${r.name}`}
+          />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-semibold text-foreground">
+                {r.name}
+              </span>
+              <Badge className={cn("border", toneClasses(meta.tone))}>
+                <StatusIcon className="h-3 w-3" />
+                {meta.label}
+              </Badge>
+              {r.orgType && (
+                <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                  {r.orgType}
+                </span>
+              )}
+              {r.size && (
+                <span className="text-[10px] text-muted-foreground">
+                  · {r.size}
+                </span>
+              )}
+              <span className="text-[10px] text-muted-foreground">
+                · {timeAgo(r.createdAt)}
+              </span>
+            </div>
+            <div className="mt-0.5 flex items-center truncate text-xs text-muted-foreground">
+              <span className="truncate">{r.org}</span>
+              <span className="mx-1.5 opacity-40">·</span>
+              <a
+                href={`mailto:${r.email}`}
+                className="text-brand hover:underline"
+              >
+                {r.email}
+              </a>
+              <button
+                type="button"
+                onClick={() => openMailto(r)}
+                aria-label={`Open mailto compose for ${r.email}`}
+                title="Open mailto"
+                className="ml-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-transparent text-muted-foreground/70 transition-colors hover:border-border/60 hover:bg-muted/40 hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand"
+              >
+                <MailOpen className="h-3 w-3" />
+              </button>
+              <button
+                type="button"
+                onClick={() => void copyEmail(r)}
+                aria-label={`Copy ${r.email} to clipboard`}
+                title="Copy email"
+                className={cn(
+                  "ml-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-transparent transition-colors",
+                  copiedId === r.id
+                    ? "text-growth"
+                    : "text-muted-foreground/70 hover:border-border/60 hover:bg-muted/40 hover:text-brand"
+                )}
+              >
+                {copiedId === r.id ? (
+                  <CheckCheck className="h-3 w-3" />
+                ) : (
+                  <ClipboardCopy className="h-3 w-3" />
+                )}
+              </button>
+              {r.phone && (
+                <>
+                  <span className="mx-1.5 opacity-40">·</span>
+                  <a
+                    href={`tel:${r.phone}`}
+                    className="inline-flex items-center gap-1 hover:underline"
+                  >
+                    <Phone className="h-3 w-3" /> {r.phone}
+                  </a>
+                </>
+              )}
+            </div>
+
+            {/* Note display / inline editor */}
+            {isEditingNote ? (
+              <div className="mt-2 space-y-2">
+                <Textarea
+                  value={noteDraft}
+                  onChange={(e) => setNoteDraft(e.target.value)}
+                  placeholder="Add a private team note: preferred time, specialty, decision stage…"
+                  rows={3}
+                  className="text-xs"
+                  aria-label={`Edit note for ${r.name}`}
+                  autoFocus
+                />
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => void saveNote(r)}
+                    disabled={noteSaving}
+                    className="h-7 px-2.5 text-[11px]"
+                  >
+                    {noteSaving ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Check className="h-3 w-3" />
+                    )}
+                    Save note
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setEditingNoteId(null);
+                      setNoteDraft("");
+                    }}
+                    className="h-7 px-2.5 text-[11px]"
+                  >
+                    Cancel
+                  </Button>
+                  {r.note && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => void saveNote(r, "")}
+                      disabled={noteSaving}
+                      className="h-7 px-2.5 text-[11px] text-muted-foreground hover:text-destructive"
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ) : r.note ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingNoteId(r.id);
+                  setNoteDraft(r.note ?? "");
+                }}
+                className="group mt-1 flex w-full items-start gap-1.5 rounded-md px-1 py-0.5 text-left text-xs italic text-muted-foreground transition-colors hover:bg-muted/40 hover:not-italic"
+              >
+                <Pencil className="mt-0.5 h-3 w-3 shrink-0 opacity-50 group-hover:opacity-100" />
+                <span className="line-clamp-2">&ldquo;{r.note}&rdquo;</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingNoteId(r.id);
+                  setNoteDraft("");
+                }}
+                className="mt-1 inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-[11px] text-muted-foreground/70 transition-colors hover:bg-muted/40 hover:text-brand"
+              >
+                <Pencil className="h-3 w-3" />
+                Add team note
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 sm:justify-end">
+          <Select
+            value={r.status}
+            onValueChange={(v) => void changeStatus(r, v)}
+            disabled={isUpdating}
+          >
+            <SelectTrigger
+              className="h-8 w-[140px] text-xs"
+              aria-label={`Change status for ${r.name}`}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUSES.map((s) => (
+                <SelectItem key={s.value} value={s.value}>
+                  {s.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-8 px-2.5 text-[11px]"
+            onClick={() => void changeStatus(r, next)}
+            disabled={isUpdating}
+            aria-label={`Advance ${r.name} to ${statusMeta(next).label}`}
+          >
+            {isUpdating ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <>→ {statusMeta(next).label}</>
+            )}
+          </Button>
+        </div>
+      </li>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -655,6 +920,47 @@ export function AdminOverlay({
               )}
               {sortDir === "desc" ? "↓" : "↑"}
             </Button>
+            {/* View mode segmented control — flat list vs grouped-by-status.
+                Inline buttons (not a Select) so the active state is
+                instantly visible. */}
+            <div
+              role="tablist"
+              aria-label="View mode"
+              className="inline-flex h-9 items-center rounded-md border border-border/60 bg-muted/40 p-0.5"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={viewMode === "flat"}
+                onClick={() => setViewModeTracked("flat")}
+                className={cn(
+                  "inline-flex h-8 items-center gap-1.5 rounded-sm px-2.5 text-[11px] font-medium transition-colors focus-ring-tab",
+                  viewMode === "flat"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                title="Flat list view"
+              >
+                <Rows3 className="h-3.5 w-3.5" />
+                List
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={viewMode === "grouped"}
+                onClick={() => setViewModeTracked("grouped")}
+                className={cn(
+                  "inline-flex h-8 items-center gap-1.5 rounded-sm px-2.5 text-[11px] font-medium transition-colors focus-ring-tab",
+                  viewMode === "grouped"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                title="Grouped by status (pipeline view)"
+              >
+                <ListTree className="h-3.5 w-3.5" />
+                Grouped
+              </button>
+            </div>
             <Button
               type="button"
               variant="outline"
@@ -817,235 +1123,131 @@ export function AdminOverlay({
               </div>
             ) : (
               <>
-                {/* Select-all row */}
-                <label className="flex items-center gap-2 border-b border-border/40 bg-muted/20 px-4 py-2 text-[11px] text-muted-foreground sm:px-6">
-                  <input
-                    type="checkbox"
-                    className="h-3.5 w-3.5 accent-brand"
-                    checked={allFilteredSelected}
-                    onChange={toggleSelectAll}
-                    aria-label="Select all visible demo requests"
-                  />
-                  <span className="tabular-nums">{selected.size}</span> of{" "}
-                  <span className="tabular-nums">{filtered.length}</span> selected
-                </label>
-                <ul className="divide-y divide-border/40">
-                  {filtered.map((r) => {
-                    const meta = statusMeta(r.status);
-                    const StatusIcon = meta.icon;
-                    const next = STATUS_NEXT[r.status] ?? "new";
-                    const isUpdating = updatingId === r.id;
-                    const isSelected = selected.has(r.id);
-                    const isEditingNote = editingNoteId === r.id;
-                    return (
-                      <li
-                        key={r.id}
-                        className={cn(
-                          "grid grid-cols-1 gap-3 px-4 py-3.5 transition-colors hover:bg-muted/20 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:px-6",
-                          isSelected && "bg-brand-soft/20"
-                        )}
-                      >
-                        <div className="flex min-w-0 items-start gap-3">
-                          <input
-                            type="checkbox"
-                            className="mt-1 h-3.5 w-3.5 shrink-0 accent-brand"
-                            checked={isSelected}
-                            onChange={() => toggleSelect(r.id)}
-                            aria-label={`Select ${r.name}`}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-sm font-semibold text-foreground">
-                                {r.name}
-                              </span>
-                              <Badge className={cn("border", toneClasses(meta.tone))}>
-                                <StatusIcon className="h-3 w-3" />
-                                {meta.label}
-                              </Badge>
-                              {r.orgType && (
-                                <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                                  {r.orgType}
-                                </span>
-                              )}
-                              {r.size && (
-                                <span className="text-[10px] text-muted-foreground">
-                                  · {r.size}
-                                </span>
-                              )}
-                              <span className="text-[10px] text-muted-foreground">
-                                · {timeAgo(r.createdAt)}
-                              </span>
-                            </div>
-                            <div className="mt-0.5 flex items-center truncate text-xs text-muted-foreground">
-                              <span className="truncate">{r.org}</span>
-                              <span className="mx-1.5 opacity-40">·</span>
-                              <a
-                                href={`mailto:${r.email}`}
-                                className="text-brand hover:underline"
-                              >
-                                {r.email}
-                              </a>
-                              <button
-                                type="button"
-                                onClick={() => openMailto(r)}
-                                aria-label={`Open mailto compose for ${r.email}`}
-                                title="Open mailto"
-                                className="ml-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-transparent text-muted-foreground/70 transition-colors hover:border-border/60 hover:bg-muted/40 hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand"
-                              >
-                                <MailOpen className="h-3 w-3" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => void copyEmail(r)}
-                                aria-label={`Copy ${r.email} to clipboard`}
-                                title="Copy email"
-                                className={cn(
-                                  "ml-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-transparent transition-colors",
-                                  copiedId === r.id
-                                    ? "text-growth"
-                                    : "text-muted-foreground/70 hover:border-border/60 hover:bg-muted/40 hover:text-brand"
-                                )}
-                              >
-                                {copiedId === r.id ? (
-                                  <CheckCheck className="h-3 w-3" />
-                                ) : (
-                                  <ClipboardCopy className="h-3 w-3" />
-                                )}
-                              </button>
-                              {r.phone && (
-                                <>
-                                  <span className="mx-1.5 opacity-40">·</span>
-                                  <a
-                                    href={`tel:${r.phone}`}
-                                    className="inline-flex items-center gap-1 hover:underline"
-                                  >
-                                    <Phone className="h-3 w-3" /> {r.phone}
-                                  </a>
-                                </>
-                              )}
-                            </div>
+                {/* Select-all row — only meaningful in flat view. Grouped
+                    view has per-group selects which would conflict. */}
+                {viewMode === "flat" && (
+                  <label className="flex items-center gap-2 border-b border-border/40 bg-muted/20 px-4 py-2 text-[11px] text-muted-foreground sm:px-6">
+                    <input
+                      type="checkbox"
+                      className="h-3.5 w-3.5 accent-brand"
+                      checked={allFilteredSelected}
+                      onChange={toggleSelectAll}
+                      aria-label="Select all visible demo requests"
+                    />
+                    <span className="tabular-nums">{selected.size}</span> of{" "}
+                    <span className="tabular-nums">{filtered.length}</span> selected
+                  </label>
+                )}
 
-                            {/* Note display / inline editor */}
-                            {isEditingNote ? (
-                              <div className="mt-2 space-y-2">
-                                <Textarea
-                                  value={noteDraft}
-                                  onChange={(e) => setNoteDraft(e.target.value)}
-                                  placeholder="Add a private team note: preferred time, specialty, decision stage…"
-                                  rows={3}
-                                  className="text-xs"
-                                  aria-label={`Edit note for ${r.name}`}
-                                  autoFocus
-                                />
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    onClick={() => void saveNote(r)}
-                                    disabled={noteSaving}
-                                    className="h-7 px-2.5 text-[11px]"
-                                  >
-                                    {noteSaving ? (
-                                      <Loader2 className="h-3 w-3 animate-spin" />
-                                    ) : (
-                                      <Check className="h-3 w-3" />
-                                    )}
-                                    Save note
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => {
-                                      setEditingNoteId(null);
-                                      setNoteDraft("");
-                                    }}
-                                    className="h-7 px-2.5 text-[11px]"
-                                  >
-                                    Cancel
-                                  </Button>
-                                  {r.note && (
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => void saveNote(r, "")}
-                                      disabled={noteSaving}
-                                      className="h-7 px-2.5 text-[11px] text-muted-foreground hover:text-destructive"
-                                    >
-                                      Clear
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
-                            ) : r.note ? (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditingNoteId(r.id);
-                                  setNoteDraft(r.note ?? "");
-                                }}
-                                className="group mt-1 flex w-full items-start gap-1.5 rounded-md px-1 py-0.5 text-left text-xs italic text-muted-foreground transition-colors hover:bg-muted/40 hover:not-italic"
-                              >
-                                <Pencil className="mt-0.5 h-3 w-3 shrink-0 opacity-50 group-hover:opacity-100" />
-                                <span className="line-clamp-2">&ldquo;{r.note}&rdquo;</span>
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditingNoteId(r.id);
-                                  setNoteDraft("");
-                                }}
-                                className="mt-1 inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-[11px] text-muted-foreground/70 transition-colors hover:bg-muted/40 hover:text-brand"
-                              >
-                                <Pencil className="h-3 w-3" />
-                                Add team note
-                              </button>
+                {viewMode === "flat" ? (
+                  <ul className="divide-y divide-border/40">
+                    {filtered.map((r) => renderRow(r))}
+                  </ul>
+                ) : (
+                  /* Grouped-by-status pipeline view — one collapsible
+                     section per status, each with its own count + select-all
+                     chip. Empty statuses are skipped (filter above). */
+                  <div className="divide-y divide-border/40">
+                    {groupedBy.map((g) => {
+                      const StatusIcon = g.status.icon;
+                      const isCollapsed = collapsedGroups.has(g.status.value);
+                      const groupSelected = g.rows.filter((r) =>
+                        selected.has(r.id)
+                      ).length;
+                      const allGroupSelected =
+                        g.rows.length > 0 &&
+                        g.rows.every((r) => selected.has(r.id));
+                      return (
+                        <div key={g.status.value} className="bg-muted/10">
+                          <div
+                            className={cn(
+                              "flex items-center gap-2 px-4 py-2 text-[11px] sm:px-6",
+                              "border-l-2",
+                              g.status.tone === "brand"
+                                ? "border-l-brand/60 bg-brand/[0.04]"
+                                : g.status.tone === "growth"
+                                ? "border-l-growth/60 bg-growth/[0.04]"
+                                : g.status.tone === "amber"
+                                ? "border-l-amber-500/60 bg-amber-500/[0.04]"
+                                : "border-l-border/60"
                             )}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 sm:justify-end">
-                          <Select
-                            value={r.status}
-                            onValueChange={(v) => void changeStatus(r, v)}
-                            disabled={isUpdating}
                           >
-                            <SelectTrigger
-                              className="h-8 w-[140px] text-xs"
-                              aria-label={`Change status for ${r.name}`}
+                            <button
+                              type="button"
+                              onClick={() => toggleGroup(g.status.value)}
+                              aria-expanded={!isCollapsed}
+                              aria-controls={`group-${g.status.value}`}
+                              aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${g.status.label} group`}
+                              className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand"
                             >
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {STATUSES.map((s) => (
-                                <SelectItem key={s.value} value={s.value}>
-                                  {s.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="h-8 px-2.5 text-[11px]"
-                            onClick={() => void changeStatus(r, next)}
-                            disabled={isUpdating}
-                            aria-label={`Advance ${r.name} to ${statusMeta(next).label}`}
-                          >
-                            {isUpdating ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                              <>→ {statusMeta(next).label}</>
-                            )}
-                          </Button>
+                              <ChevronDown
+                                className={cn(
+                                  "h-3.5 w-3.5 transition-transform",
+                                  isCollapsed && "-rotate-90"
+                                )}
+                              />
+                            </button>
+                            <span
+                              className={cn(
+                                "flex h-5 w-5 items-center justify-center rounded-md border",
+                                toneClasses(g.status.tone)
+                              )}
+                            >
+                              <StatusIcon className="h-3 w-3" />
+                            </span>
+                            <span className="font-semibold uppercase tracking-[0.14em] text-foreground/80">
+                              {g.status.label}
+                            </span>
+                            <span className="tabular-nums text-muted-foreground">
+                              {g.rows.length} {g.rows.length === 1 ? "lead" : "leads"}
+                            </span>
+                            {/* Group select-all */}
+                            <label className="ml-auto inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                              <input
+                                type="checkbox"
+                                className="h-3 w-3 accent-brand"
+                                checked={allGroupSelected}
+                                onChange={() => {
+                                  setSelected((prev) => {
+                                    const next = new Set(prev);
+                                    if (allGroupSelected) {
+                                      for (const r of g.rows) next.delete(r.id);
+                                    } else {
+                                      for (const r of g.rows) next.add(r.id);
+                                    }
+                                    return next;
+                                  });
+                                }}
+                                aria-label={`Select all ${g.status.label} leads`}
+                              />
+                              {groupSelected > 0
+                                ? `${groupSelected} selected`
+                                : "select all"}
+                            </label>
+                          </div>
+                          {!isCollapsed && (
+                            <ul
+                              id={`group-${g.status.value}`}
+                              className="divide-y divide-border/40 border-l-2"
+                              style={{
+                                borderLeftColor:
+                                  g.status.tone === "brand"
+                                    ? "oklch(0.55 0.12 188 / 0.6)"
+                                    : g.status.tone === "growth"
+                                    ? "oklch(0.65 0.14 165 / 0.6)"
+                                    : g.status.tone === "amber"
+                                    ? "oklch(0.75 0.18 84 / 0.6)"
+                                    : "oklch(0.85 0.02 185 / 0.6)",
+                              }}
+                            >
+                              {g.rows.map((r) => renderRow(r))}
+                            </ul>
+                          )}
                         </div>
-                      </li>
-                    );
-                  })}
-                </ul>
+                      );
+                    })}
+                  </div>
+                )}
               </>
             )}
           </div>

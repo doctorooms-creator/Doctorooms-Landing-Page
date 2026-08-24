@@ -794,3 +794,152 @@
    the production bundle (works around Turbopack's incremental cache). */
 
 
+/* === Round 20 additions — premium accent utilities + reading flourishes === */
+
+/* Chip-dual-tone — a chip with a brand→growth gradient border-image so the
+   border itself is a subtle brand→growth fade. Useful for "dual-coded"
+   affordances (where two ideas converge: brand + growth, clinical +
+   operational). Pairs with the existing marker-tick. */
+.chip-dual-tone {
+  position: relative;
+  border: 1px solid transparent;
+  border-image: linear-gradient(90deg, oklch(0.55 0.12 188 / 0.6), oklch(0.65 0.14 165 / 0.6)) 1;
+  background:
+    linear-gradient(oklch(1 0 0), oklch(1 0 0)) padding-box,
+    linear-gradient(90deg, oklch(0.55 0.12 188 / 0.6), oklch(0.65 0.14 165 / 0.6)) border-box;
+}
+.dark .chip-dual-tone {
+  background:
+    linear-gradient(oklch(0.21 0.025 245), oklch(0.21 0.025 245)) padding-box,
+    linear-gradient(90deg, oklch(0.55 0.12 188 / 0.6), oklch(0.65 0.14 165 / 0.6)) border-box;
+}
+
+/* Reading-rhythm — drop-cap + comfortable measure for premium body copy.
+   Used on outcome-card featured paragraphs + the security chapter
+   disclaimer so the reader perceives editorial care, not marketing fluff. */
+.reading-rhythm {
+  text-wrap: pretty;
+  line-height: 1.7;
+  max-width: 68ch;
+}
+.reading-rhythm::first-letter {
+  font-size: 3.2em;
+  font-weight: 700;
+  line-height: 0.85;
+  margin-right: 0.08em;
+  margin-top: 0.04em;
+  float: left;
+  background: linear-gradient(135deg, oklch(0.45 0.1 188), oklch(0.6 0.13 158));
+  -webkit-background-clip: text;
+          background-clip: text;
+  color: transparent;
+}
+
+/* Ascend-bar — animated step bars showing progress through a journey.
+   Renders N segments, fills them sequentially via the `--step` CSS var.
+   Used by rollout-timeline + patient-journey for "stage of progress". */
+.ascend-bar {
+  display: flex;
+  gap: 3px;
+  width: 100%;
+}
+.ascend-bar > span {
+  flex: 1;
+  height: 4px;
+  border-radius: 9999px;
+  background: oklch(0.85 0.02 185 / 0.6);
+  position: relative;
+  overflow: hidden;
+}
+.ascend-bar > span::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, oklch(0.55 0.12 188), oklch(0.65 0.14 165));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ascend-bar > span[data-active="true"]::after,
+.ascend-bar > span[data-done="true"]::after {
+  transform: scaleX(1);
+}
+.ascend-bar > span[data-done="true"]::after {
+  background: linear-gradient(90deg, oklch(0.6 0.13 158), oklch(0.65 0.14 165));
+}
+
+/* Tape-edge — a decorative torn-tape edge for callouts / sticky-note
+   surfaces. Pairs with the security disclaimer + admin overlay tip boxes
+   to give a "team-stickies" feel without being silly. */
+.tape-edge {
+  position: relative;
+}
+.tape-edge::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  width: 64px;
+  height: 18px;
+  transform: translateX(-50%) rotate(-2deg);
+  background:
+    linear-gradient(90deg,
+      oklch(0.55 0.12 188 / 0.18) 0%,
+      oklch(0.55 0.12 188 / 0.28) 50%,
+      oklch(0.55 0.12 188 / 0.18) 100%
+    );
+  border-left: 1px dashed oklch(0.55 0.12 188 / 0.4);
+  border-right: 1px dashed oklch(0.55 0.12 188 / 0.4);
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Scan-line — subtle scanline overlay for "live feed" / product surfaces.
+   Adds the faint horizontal-line texture CRT monitors used to have. Pairs
+   with the Queue chapter's live board + the AI agent's response panel. */
+.scan-line {
+  position: relative;
+}
+.scan-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    0deg,
+    oklch(1 0 0 / 0.04) 0px,
+    oklch(1 0 0 / 0.04) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  border-radius: inherit;
+  mix-blend-mode: overlay;
+}
+.dark .scan-line::after {
+  background-image: repeating-linear-gradient(
+    0deg,
+    oklch(1 0 0 / 0.05) 0px,
+    oklch(1 0 0 / 0.05) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+/* Footnote-marker — a superscript brand-colored marker that links an
+   inline claim to a footnote / disclaimer line. Used in the ROI calculator
+   inputs + comparison table cells. */
+.footnote-marker {
+  font-size: 0.65em;
+  vertical-align: super;
+  color: oklch(0.55 0.12 188);
+  font-weight: 700;
+  margin-left: 0.1em;
+  line-height: 0;
+  user-select: none;
+}
+
+/* Tailwind v4 force-recompile marker (round 20) — content shift triggers a
+   fresh Lightning CSS re-emit so the new utility rules above reliably
+   appear in the production bundle (works around Turbopack's incremental cache). */
+

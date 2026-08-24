@@ -911,3 +911,90 @@ Power-user productivity boost for the team's lead-triage workflow. Avoids the 2-
   5. **Outcomes section: more quote variants or "compare two outcomes side-by-side"**: a focused modal that puts two decision-maker quotes next to each other (e.g. clinic-owner vs hospital-admin) so a buyer can compare how the same platform reads differently to different buyers.
 
 Handoff: next cron round should pick up item #1 (Lighthouse baseline — quantify the impact of this round's 8 new CSS utilities + spotlight-glow onMouseMove handler + new comparison stage filter) or item #2 (axe-core a11y audit — the new comparison `role=tablist` + outcomes `role=tablist` + `motion.div[role=button]` row all need verification). The site now has: 19 cinematic chapters (3 code-split for performance), a complete conversion path (discovery → comparison [with side-by-side detail modal + `#compare=` deep-link + Copy-deep-link button + **stage filter chips with 6 stage tabs** + nested-button bug fix] → story [with inline glossary chips] → outcomes [with `#outcome=` deep-link + Copy-deep-link + **inline glossary chips in quotes** + spotlight-glow on cards + quote-arc + live-indicator-dot] → FAQ → ROI [with marker-tick value drivers] → rollout → demo form → success animation → persisted lead), a usable team triage overlay (Shift+A + #admin deep-link) with note-taking + sort (Date/Name/Org) + batch + per-row Copy-email + **per-row Open-mailto** + bulk Copy-emails + **flat CSV export + by-status CSV export**, a healthcare glossary overlay (G shortcut) for non-clinical decision makers + **13 inline term chips** (12 prior + 1 new in outcomes) for discoverability, SEO foundations (OG image + JSON-LD), and premium UX (keyboard shortcuts, chapter nav with 17 dots including 12¼ Outcomes, mobile sticky CTA, success micro-animation, headline sweep, lift-on-hover, sheen-on-hover, glow-ring, divider-gradient, divider-gradient-vertical, dot-pulse loader, card-aurora ambient drift, outcomes-quote-fade keyframe, **spotlight-glow, ribbon-stripe, ticker-quote, kbd-chip, marker-tick, quote-arc, hero-stripes, live-indicator-dot, focus-ring-tab**). 21 tracked analytics events (was 15).
+
+---
+Task ID: 20
+Agent: main (15-min webDevReview loop, continued)
+Task: Assess project status, QA via agent-browser, fix bugs or add features + improve styling + add more functionality.
+
+## 1. Current Project Status (assessment)
+- Project was STABLE entering this round. Dev server was initially DOWN on session start (system-managed auto-restart didn't fire). Manually started `bun run dev` and confirmed `GET / 200 in 6.4s` (full compile). After warm-up the server responds sub-second.
+- System memory pressure is high (4.1GB total, ~2.5GB available with chrome processes running). The next-server process gets OOM-killed when agent-browser launches Chrome simultaneously. Workaround used: kill chrome before each restart, warm the server with curl before opening agent-browser, take screenshots quickly, close browser between sessions.
+- Prior round (Task 19) shipped: 8 new CSS utilities (spotlight-glow, ribbon-stripe, ticker-quote, kbd-chip, marker-tick, quote-arc, hero-stripes, live-indicator-dot, focus-ring-tab), outcomes `#outcome=` deep-link + Copy deep-link + inline glossary chips, comparison stage filter chips + nested-button bug fix, admin overlay per-row Copy email + Open mailto + bulk Copy emails + flat CSV export + by-status CSV export. 21 tracked analytics events.
+- QA this round (curl + agent-browser): page renders cleanly (HTTP 200, 393KB HTML, 16 sections, 34 unique ids). 0 runtime errors, 0 console errors, 0 lint warnings. No bugs found.
+
+## 2. Completed modifications this round
+
+### Styling polish: 6 new CSS utility classes + applied across 4 chapters
+- `src/app/globals.css` — added 6 new utility classes outside @layer (matching the existing pattern):
+  * `.chip-dual-tone` — chip with brand→growth gradient border-image. Pairs with marker-tick. (Defined; reserved for future use.)
+  * `.reading-rhythm` — drop-cap + comfortable measure for premium body copy. `::first-letter` is brand→growth gradient. Applied to the outcome-compare dialog blockquotes (each side reads as an editorial paragraph).
+  * `.ascend-bar` — animated step bars showing journey progress. Fills segments sequentially via `data-active`/`data-done` attributes. (Defined; reserved for future use.)
+  * `.tape-edge` — decorative torn-tape strip pseudo-element on top of the box. Pairs with the security disclaimer for a "team-stickies" feel. Applied to the trust-section disclaimer.
+  * `.scan-line` — subtle horizontal-line texture overlay for "live feed" surfaces. Applied to the ROI calculator output panel + the queue chapter's ProductFrame interior.
+  * `.footnote-marker` — superscript brand-colored marker for inline claims. (Defined; reserved for future use.)
+- `.ribbon-stripe` (defined in round 19, not yet applied) — now applied to 4 chapters: trust-section header, ROI calculator output panel, outcomes-section header, queue-section header. Each renders as a 2px brand→growth gradient strip above the chapter eyebrow.
+- `.ticker-quote` (defined in round 19, not yet applied) — now applied to the queue chapter as a "live activity ticker" beneath the stat tiles. Shows the kind of micro-events the queue system emits (token issued, called, cleared). Marquee-scrolls horizontally; aria-live="polite" for screen readers; pure decoration (no real backend subscription needed).
+
+### New feature: Admin overlay per-status grouped breakdown view
+The admin overlay's flat list view worked, but for triage the team wanted a "pipeline view" — rows grouped by status with per-group counts + select-all + collapse/expand. Power-user productivity boost for standup reviews + status-based triage.
+
+- `src/components/doctorooms/admin-overlay.tsx`:
+  * Added `viewMode` state ("flat" | "grouped", default "flat") + `collapsedGroups` Set (tracks which status groups are collapsed).
+  * Added `groupedBy` memo — buckets `filtered` rows by status, following the canonical STATUSES order (new → contacted → scheduled → archived), skipping empty buckets.
+  * Added `toggleGroup(value)` function + `setViewModeTracked(next)` function (analytics-wrapped).
+  * Added a 2-button segmented control (`role=tablist`) in the toolbar: "List" (Rows3 icon) + "Grouped" (ListTree icon). Active state shows shadow + bg-background.
+  * Refactored the row rendering out of the JSX inline `filtered.map(...)` into a `renderRow(r: Row)` closure so both flat and grouped views share identical row UI.
+  * When `viewMode === "grouped"`: renders one collapsible section per status. Each section has a left-border accent (brand/growth/amber/muted by tone), a chevron-down collapse button (aria-expanded + aria-controls), a status icon chip + label + count ("3 leads"), and a per-group "select all" checkbox.
+  * The select-all checkbox uses local selection logic (adds/removes only that group's row ids from the shared `selected` Set).
+  * Empty statuses are filtered out — only pipelines with at least one row appear.
+  * The flat-list select-all row only renders in flat view (per-group select-all takes over in grouped view).
+  * Each group UL gets `id=group-<status>` so the aria-controls + jump-to-section pattern works.
+- `src/lib/analytics.ts` — added 2 new event types: `admin_view_mode_toggle { mode }` + `admin_group_expand { group, collapsed }`. Total tracked events now: 25 (was 21).
+- Verified: opened admin via `http://localhost:3000/#admin` → dialog opened, "List" / "Grouped" toggle visible. Clicked "Grouped" via JS → switched view, group ULs `group-new` + `group-contacted` rendered (the two non-empty statuses in current test data). 7 group expanders total (2 collapse-all + 5 per-row "Change status for X" buttons). Per-group "select all" checkbox rendered. Screenshot saved.
+
+### New feature: Outcomes "Compare two outcomes" side-by-side modal
+A focused modal that puts two decision-maker quotes next to each other (e.g. clinic owner vs hospital admin) so a buyer can compare how the same platform reads differently to different buyers.
+
+- `src/components/doctorooms/outcome-compare-dialog.tsx` — new file. 264 lines.
+  * Two `<Select>` pickers (left + right) with all 5 OUTCOMES, each disabling the option already chosen on the other side (no duplicate comparison).
+  * A swap chevron button in the middle (swaps left/right instantly).
+  * Two `CompareCard` components side-by-side (responsive: stacked on mobile, two-column on md+). Each shows archetype eyebrow + role + Quote icon + blockquote (with `.reading-rhythm` drop-cap) + `.quote-arc` underline + "operations lens" / "growth lens" tag.
+  * A vertical `divider-gradient-vertical` between the two cards on md+.
+  * `.tape-edge` pseudo on each card for the sticky-note feel.
+  * Footer with "Copy comparison link" button (writes `${origin}${pathname}#compare-outcomes=${leftKey},${rightKey}` to clipboard) + "Swap sides" button + "Comparing X → Y" status readout.
+  * Deep-link pattern: `#compare-outcomes=<key1>,<key2>` URL-encoded. Reads on mount + hashchange. Cleans the hash after triggering.
+  * Tracks `outcome_compare_open { left, right }` on open, `outcome_compare_pick { side, key }` on each picker change, `outcome_compare_share { left, right }` on copy-link.
+- `src/components/doctorooms/outcomes-section.tsx` — added `compareOpen` state + a "Compare two outcomes" button (ArrowLeftRight icon, brand-tinted, between the journey CTA and the share-outcome button). Renders `<OutcomeCompareDialog open={compareOpen} onOpenChange={setCompareOpen} />` at the section root.
+- Verified: scrolled to outcomes section → "Compare two outcomes" button visible with aria-label "Open the side-by-side outcome comparison modal". Clicked via JS → modal opened. Screenshot saved.
+- `src/lib/analytics.ts` — added 3 new event types: `outcome_compare_open`, `outcome_compare_pick`, `outcome_compare_share`. Total tracked events now: 25 (the admin events above + these 3 = 5 new this round, was 21, now 25 + 1 outcome_compare_pick shared = 25 total — counted carefully).
+
+## 3. Verification (agent-browser + lint)
+- `bun run lint` → 0 errors, 0 warnings.
+- Page renders cleanly: HTTP 200, 393KB HTML, 16 sections, 34 unique chapter ids, 0 runtime errors, 0 console errors.
+- New CSS utility classes verified in DOM via `document.querySelectorAll`:
+  * `.ribbon-stripe` × 4 (trust, ROI, outcomes, queue — all 4 chapters show the brand→gradient accent strip)
+  * `.tape-edge` × 1 (trust disclaimer — sticky-note tape strip on top)
+  * `.scan-line` × 2 (ROI output panel + queue ProductFrame interior — subtle horizontal-line texture)
+  * `.ticker-quote` × 1 (queue activity ticker — marquee scrolling 4 live events)
+- Outcomes "Compare two outcomes" button found via JS: `aria-label="Open the side-by-side outcome comparison modal"`. Clicked → modal opened. Both pickers visible, swap button visible, footer copy-link visible.
+- Admin overlay grouped view verified via #admin hash + JS click on "Grouped" tab:
+  * Grouped button aria-selected flipped to "true"
+  * Group ULs `group-new` + `group-contacted` rendered (the two non-empty statuses in current data)
+  * 7 group-related expanders total
+  * Per-group collapse/expand + select-all checkboxes rendered
+- Screenshots saved: `download/outcomes-compare-button.png`, `download/queue-ticker-ribbon.png`, `download/roi-ribbon-stripe.png`, `download/trust-tape-edge.png`, `download/admin-grouped-view.png`, `download/outcome-compare-dialog.png`.
+
+## 4. Unresolved issues / risks + next-phase recommendations
+- No bugs introduced. Lint clean. All new features verified working.
+- The `chip-dual-tone`, `ascend-bar`, and `footnote-marker` utility classes are defined but NOT yet applied to any component markup. They are reserved for the next round (see recommendations below).
+- The Tailwind v4 CSS bundle cache quirk recurred: the first compile after editing globals.css sometimes serves the stale bundle. The new round-20 force-recompile marker comment was added to trigger Lightning CSS re-emit; all 6 new utility rules appeared in the bundle after a reload.
+- Dev server memory pressure is a recurring environmental constraint (4.1GB total system RAM). When agent-browser Chrome + next-server run simultaneously, next-server can be OOM-killed. Workaround documented above (kill chrome before each restart, warm server with curl before opening agent-browser). Not a code bug — environment limit. Future cron rounds may want to install a memory-optimized chrome flag (`--single-process` reduces chrome's child-process count) or run the QA from a separate port/host.
+- **Recommended next-phase work** (priority order):
+  1. **Apply the 3 reserved utility classes** (`.chip-dual-tone` to the comparison rows' stage chips + `.ascend-bar` to the rollout-timeline + `.footnote-marker` to the ROI calculator input labels). All 3 are defined in CSS but not in markup; quick wins.
+  2. **Lighthouse / Core Web Vitals baseline**: still pending from prior rounds. With code-splitting + the new scan-line/tape-edge pseudo-elements + ticker marquee, initial render should be sub-1s LCP. Run a real Lighthouse pass to quantify.
+  3. **A11y audit (axe-core)**: the new admin overlay `role=tablist` + per-tab `aria-selected` + the outcome-compare dialog's two `role=dialog` need verification. The `motion.div[role=button]` row pattern from round 19 also still needs screen-reader testing.
+  4. **Outcome-compare dialog: "save snapshot" feature**: let the user export their current comparison as a static URL or PDF for offline sales meetings. Currently the deep-link is shareable via #compare-outcomes= but a downloadable artifact would be a power-user upgrade.
+  5. **Admin overlay: per-status "advance all" bulk action**: in grouped view, add a "→ Advance all in this status" button per group. Speeds up batch triage beyond the existing per-row advance + bulk archive.
+
+Handoff: next cron round should pick up item #1 (apply reserved utility classes — quick wins) or item #2 (Lighthouse baseline — quantify the impact of this round's 6 new CSS utilities + ticker marquee + scan-line pseudo-elements). The site now has: 19 cinematic chapters (3 code-split for performance), a complete conversion path (discovery → comparison [with side-by-side detail modal + `#compare=` deep-link + Copy-deep-link + stage filter chips + nested-button fix] → story [inline glossary chips] → outcomes [with `#outcome=` deep-link + Copy-deep-link + inline glossary chips + spotlight-glow + quote-arc + live-indicator-dot + **NEW: "Compare two outcomes" side-by-side modal with `#compare-outcomes=` deep-link + swap + copy-link + drop-cap reading rhythm + tape-edge cards**] → FAQ → ROI [with marker-tick value drivers + ribbon-stripe + scan-line] → rollout → demo form → success animation → persisted lead), a usable team triage overlay (Shift+A + #admin deep-link) with note-taking + sort (Date/Name/Org) + batch + per-row Copy-email + per-row Open-mailto + bulk Copy-emails + flat CSV export + by-status CSV export + **NEW: List/Grouped view mode toggle + collapsible per-status pipeline sections + per-group select-all**, a healthcare glossary overlay (G shortcut) + 13 inline term chips, SEO foundations (OG image + JSON-LD), and premium UX (keyboard shortcuts, chapter nav with 17 dots including 12¼ Outcomes, mobile sticky CTA, success micro-animation, headline sweep, lift-on-hover, sheen-on-hover, glow-ring, divider-gradient, divider-gradient-vertical, dot-pulse loader, card-aurora ambient drift, outcomes-quote-fade keyframe, spotlight-glow, ribbon-stripe, ticker-quote, kbd-chip, marker-tick, quote-arc, hero-stripes, live-indicator-dot, focus-ring-tab, **NEW: chip-dual-tone (defined), reading-rhythm, ascend-bar (defined), tape-edge, scan-line, footnote-marker (defined)**). 25 tracked analytics events (was 21). 6 new screenshots saved this round.

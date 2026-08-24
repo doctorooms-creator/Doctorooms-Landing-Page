@@ -7,8 +7,9 @@ import { useReducedMotion } from "@/lib/anim/gsap-register";
 import { track } from "@/lib/analytics";
 import { OUTCOMES, OUTCOME_KPIS } from "@/data/doctorooms";
 import { useDemoDialog } from "./demo-dialog";
+import { OutcomeCompareDialog } from "./outcome-compare-dialog";
 import { GlossaryTerm } from "./glossary-context";
-import { ArrowRight, ChevronLeft, ChevronRight, Copy, CheckCheck, Quote, Share2, Sparkles } from "lucide-react";
+import { ArrowRight, ArrowLeftRight, ChevronLeft, ChevronRight, Copy, CheckCheck, Quote, Share2, Sparkles } from "lucide-react";
 
 /**
  * OutcomesSection — Chapter 12¼ "Outcomes" (sits between Trust and FAQ).
@@ -29,12 +30,14 @@ import { ArrowRight, ChevronLeft, ChevronRight, Copy, CheckCheck, Quote, Share2,
  *    (excluding the currently featured one) — gives visitors a
  *    scannable summary without clicking through.
  *  • CTA: "Book a private demo" + "Walk the patient journey" (deep-link
- *    to the patient-journey chapter).
+ *    to the patient-journey chapter) + "Compare two outcomes" (opens
+ *    the side-by-side comparison modal).
  *
  * Reduced-motion safe (CSS-revealed, framer-motion not used here).
  * Analytics: tracks `testimonial_quote_cycle` on prev/next + arrow-key nav,
  * `outcome_deep_link` on `#outcome=<key>` hash navigation, `outcome_modal_share`
- * on copy-deep-link, and `outcome_journey_jump` on the journey CTA click.
+ * on copy-deep-link, `outcome_journey_jump` on the journey CTA click,
+ * and `outcome_compare_open` when the side-by-side comparison modal opens.
  *
  * Deep-link: `#outcome=<key>` (e.g. `#outcome=clinic-owner`) opens the
  * outcomes section pre-seeded to that featured quote. Mirrors the
@@ -101,6 +104,11 @@ export function OutcomesSection() {
   const { open } = useDemoDialog();
   const [active, setActive] = useState(0);
   const [copied, setCopied] = useState(false);
+  // Outcome-compare modal — opens the side-by-side decision-maker
+  // comparison view. Managed locally because only this section triggers
+  // it. Mirrors the demo-dialog pattern but without a context provider
+  // since no other section needs to open it.
+  const [compareOpen, setCompareOpen] = useState(false);
 
   const go = useCallback((delta: number) => {
     const n = OUTCOMES.length;
@@ -256,6 +264,7 @@ export function OutcomesSection() {
 
       <div className="container-px mx-auto max-w-7xl">
         {/* Header */}
+        <div className="mx-auto mb-2 h-px w-24 ribbon-stripe" aria-hidden />
         <div className="mx-auto max-w-3xl text-center">
           <div className="eyebrow text-brand" data-anim>
             Chapter 12¼ — Outcomes
@@ -484,6 +493,16 @@ export function OutcomesSection() {
           </button>
           <button
             type="button"
+            onClick={() => setCompareOpen(true)}
+            className="inline-flex h-11 items-center gap-2 rounded-full border border-brand/40 bg-brand-soft/40 px-6 text-sm font-medium text-brand transition-colors hover:border-brand hover:bg-brand-soft/60 hover:shadow-sm"
+            aria-label="Open the side-by-side outcome comparison modal"
+            title="Put two decision-maker quotes next to each other"
+          >
+            <ArrowLeftRight className="h-4 w-4" />
+            Compare two outcomes
+          </button>
+          <button
+            type="button"
             onClick={copyDeepLink}
             className="inline-flex h-11 items-center gap-2 rounded-full border border-border/70 bg-background px-6 text-sm font-medium text-foreground transition-colors hover:border-brand/40 hover:bg-brand-soft/20"
             aria-label="Copy deep-link to the currently featured outcome"
@@ -496,6 +515,11 @@ export function OutcomesSection() {
           </span>
         </div>
       </div>
+
+      {/* Outcome-compare modal — opens the side-by-side decision-maker
+          comparison view. Lives at the section root so the dialog mounts
+          once and can be opened/closed without losing internal state. */}
+      <OutcomeCompareDialog open={compareOpen} onOpenChange={setCompareOpen} />
     </section>
   );
 }

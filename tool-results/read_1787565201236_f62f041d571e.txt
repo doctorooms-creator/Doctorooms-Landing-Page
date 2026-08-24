@@ -1,0 +1,1067 @@
+     1→"use client";
+     2→
+     3→import { useCallback, useEffect, useMemo, useState } from "react";
+     4→import {
+     5→  Dialog,
+     6→  DialogContent,
+     7→  DialogDescription,
+     8→  DialogHeader,
+     9→  DialogTitle,
+    10→} from "@/components/ui/dialog";
+    11→import { Button } from "@/components/ui/button";
+    12→import { Input } from "@/components/ui/input";
+    13→import { Badge } from "@/components/ui/badge";
+    14→import { Textarea } from "@/components/ui/textarea";
+    15→import {
+    16→  Select,
+    17→  SelectContent,
+    18→  SelectItem,
+    19→  SelectTrigger,
+    20→  SelectValue,
+    21→} from "@/components/ui/select";
+    22→import { Skeleton } from "@/components/ui/skeleton";
+    23→import { track } from "@/lib/analytics";
+    24→import { cn } from "@/lib/utils";
+    25→import {
+    26→  AlertCircle,
+    27→  Archive,
+    28→  ArrowDownAZ,
+    29→  ArrowUpAZ,
+    30→  Check,
+    31→  CheckCheck,
+    32→  CheckCircle2,
+    33→  ClipboardCopy,
+    34→  Clock,
+    35→  Download,
+    36→  ExternalLink,
+    37→  Inbox,
+    38→  Loader2,
+    39→  Mail,
+    40→  MailOpen,
+    41→  Phone,
+    42→  Pencil,
+    43→  RefreshCw,
+    44→  Search,
+    45→  ShieldCheck,
+    46→  Trash2,
+    47→  Users,
+    48→  X,
+    49→} from "lucide-react";
+    50→
+    51→/**
+    52→ * AdminOverlay — in-page team panel (no new route, per the single-route rule).
+    53→ *
+    54→ * Opened by:
+    55→ *   • `Shift + A` (registered by `BackToTop` so all global shortcuts live in one place)
+    56→ *   • the "Team admin" entry added to the keyboard-shortcuts help dialog
+    57→ *   • a `#admin` URL hash deep-link (so the team can bookmark/share)
+    58→ *
+    59→ * Capabilities:
+    60→ *   • Search across name/email/org/orgType
+    61→ *   • Filter by status (new / contacted / scheduled / archived)
+    62→ *   • Sort by Date / Name / Org, asc or desc
+    63→ *   • Inline note editing (PATCH { note }) — team-side context per lead
+    64→ *   • Status changes inline (PATCH { status }) — triage workflow
+    65→ *   • Batch select + delete (DELETE ?ids=...) for cleanup
+    66→ *   • Per-row Copy email + Open mailto (pre-filled compose) + bulk Copy selected emails
+    67→ *   • Export filtered rows to CSV (flat) or by-status (grouped w/ status column)
+    68→ *   • KPI counts at a glance — click a KPI to filter by that status
+    69→ *
+    70→ * Reduced-motion safe (CSS only). No auth in this demo sandbox; the
+    71→ * comment in the header makes that clear to the team.
+    72→ */
+    73→
+    74→type Row = {
+    75→  id: string;
+    76→  name: string;
+    77→  email: string;
+    78→  phone?: string | null;
+    79→  org: string;
+    80→  orgType?: string | null;
+    81→  size?: string | null;
+    82→  note?: string | null;
+    83→  source?: string | null;
+    84→  status: string;
+    85→  createdAt: string;
+    86→};
+    87→
+    88→const STATUSES = [
+    89→  { value: "new", label: "New", tone: "brand", icon: Inbox },
+    90→  { value: "contacted", label: "Contacted", tone: "amber", icon: Mail },
+    91→  { value: "scheduled", label: "Scheduled", tone: "growth", icon: Clock },
+    92→  { value: "archived", label: "Archived", tone: "muted", icon: CheckCircle2 },
+    93→] as const;
+    94→
+    95→const STATUS_NEXT: Record<string, string> = {
+    96→  new: "contacted",
+    97→  contacted: "scheduled",
+    98→  scheduled: "archived",
+    99→  archived: "new",
+   100→};
+   101→
+   102→function toneClasses(tone: string) {
+   103→  switch (tone) {
+   104→    case "brand":
+   105→      return "border-brand/30 bg-brand-soft/50 text-brand";
+   106→    case "amber":
+   107→      return "border-amber-500/30 bg-amber-500/10 text-amber-300";
+   108→    case "growth":
+   109→      return "border-growth/30 bg-growth/10 text-growth";
+   110→    default:
+   111→      return "border-border/60 bg-muted/40 text-muted-foreground";
+   112→  }
+   113→}
+   114→
+   115→function statusMeta(v: string) {
+   116→  return STATUSES.find((s) => s.value === v) ?? STATUSES[0];
+   117→}
+   118→
+   119→function timeAgo(iso: string) {
+   120→  const then = new Date(iso).getTime();
+   121→  const diff = Math.max(0, Date.now() - then);
+   122→  const min = Math.floor(diff / 60000);
+   123→  if (min < 1) return "just now";
+   124→  if (min < 60) return `${min}m ago`;
+   125→  const hr = Math.floor(min / 60);
+   126→  if (hr < 24) return `${hr}h ago`;
+   127→  const day = Math.floor(hr / 24);
+   128→  if (day < 30) return `${day}d ago`;
+   129→  const mo = Math.floor(day / 30);
+   130→  return `${mo}mo ago`;
+   131→}
+   132→
+   133→function escapeCsv(v: string) {
+   134→  if (/[",\n]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
+   135→  return v;
+   136→}
+   137→
+   138→export function AdminOverlay({
+   139→  open,
+   140→  onOpenChange,
+   141→}: {
+   142→  open: boolean;
+   143→  onOpenChange: (v: boolean) => void;
+   144→}) {
+   145→  const [rows, setRows] = useState<Row[]>([]);
+   146→  const [loading, setLoading] = useState(false);
+   147→  const [error, setError] = useState<string | null>(null);
+   148→  const [query, setQuery] = useState("");
+   149→  const [filter, setFilter] = useState<string>("all");
+   150→  const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
+   151→  const [sortMode, setSortMode] = useState<"date" | "name" | "org">("date");
+   152→  const [updatingId, setUpdatingId] = useState<string | null>(null);
+   153→  const [lastFetch, setLastFetch] = useState<number | null>(null);
+   154→  const [selected, setSelected] = useState<Set<string>>(new Set());
+   155→  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+   156→  const [noteDraft, setNoteDraft] = useState("");
+   157→  const [noteSaving, setNoteSaving] = useState(false);
+   158→  const [bulkDeleting, setBulkDeleting] = useState(false);
+   159→  const [copiedId, setCopiedId] = useState<string | null>(null);
+   160→  const [bulkCopied, setBulkCopied] = useState(false);
+   161→
+   162→  const load = useCallback(async () => {
+   163→    setLoading(true);
+   164→    setError(null);
+   165→    try {
+   166→      const res = await fetch("/api/demo", { cache: "no-store" });
+   167→      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+   168→      const json = await res.json();
+   169→      setRows(Array.isArray(json.rows) ? (json.rows as Row[]) : []);
+   170→      setLastFetch(Date.now());
+   171→    } catch (e) {
+   172→      setError(e instanceof Error ? e.message : "Failed to load");
+   173→    } finally {
+   174→      setLoading(false);
+   175→    }
+   176→  }, []);
+   177→
+   178→  // Open via #admin hash deep-link.
+   179→  useEffect(() => {
+   180→    if (typeof window === "undefined") return;
+   181→    const checkHash = () => {
+   182→      if (window.location.hash === "#admin") {
+   183→        track("admin_panel_open", { source: "url_hash" });
+   184→        onOpenChange(true);
+   185→        // Clean up the hash so subsequent Esc + re-open doesn't auto-trigger.
+   186→        try {
+   187→          history.replaceState(null, "", window.location.pathname);
+   188→        } catch {
+   189→          // ignore
+   190→        }
+   191→      }
+   192→    };
+   193→    checkHash();
+   194→    window.addEventListener("hashchange", checkHash);
+   195→    return () => window.removeEventListener("hashchange", checkHash);
+   196→  }, [onOpenChange]);
+   197→
+   198→  useEffect(() => {
+   199→    if (open && rows.length === 0 && !loading && !error) {
+   200→      void load();
+   201→    }
+   202→  }, [open, load, rows.length, loading, error]);
+   203→
+   204→  const filtered = useMemo(() => {
+   205→    const q = query.trim().toLowerCase();
+   206→    const list = rows.filter((r) => {
+   207→      if (filter !== "all" && r.status !== filter) return false;
+   208→      if (!q) return true;
+   209→      return (
+   210→        r.name.toLowerCase().includes(q) ||
+   211→        r.email.toLowerCase().includes(q) ||
+   212→        r.org.toLowerCase().includes(q) ||
+   213→        (r.orgType ?? "").toLowerCase().includes(q)
+   214→      );
+   215→    });
+   216→    list.sort((a, b) => {
+   217→      const dir = sortDir === "asc" ? 1 : -1;
+   218→      if (sortMode === "name") {
+   219→        return dir * a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+   220→      }
+   221→      if (sortMode === "org") {
+   222→        return dir * a.org.localeCompare(b.org, undefined, { sensitivity: "base" });
+   223→      }
+   224→      const at = new Date(a.createdAt).getTime();
+   225→      const bt = new Date(b.createdAt).getTime();
+   226→      return dir * (at - bt);
+   227→    });
+   228→    return list;
+   229→  }, [rows, filter, query, sortDir, sortMode]);
+   230→
+   231→  const counts = useMemo(() => {
+   232→    const c: Record<string, number> = {
+   233→      new: 0,
+   234→      contacted: 0,
+   235→      scheduled: 0,
+   236→      archived: 0,
+   237→    };
+   238→    for (const r of rows) {
+   239→      if (c[r.status] != null) c[r.status] += 1;
+   240→    }
+   241→    return c;
+   242→  }, [rows]);
+   243→
+   244→  const allFilteredSelected =
+   245→    filtered.length > 0 && filtered.every((r) => selected.has(r.id));
+   246→
+   247→  function toggleSelect(id: string) {
+   248→    setSelected((prev) => {
+   249→      const next = new Set(prev);
+   250→      if (next.has(id)) next.delete(id);
+   251→      else next.add(id);
+   252→      return next;
+   253→    });
+   254→  }
+   255→
+   256→  function toggleSelectAll() {
+   257→    if (allFilteredSelected) {
+   258→      setSelected(new Set());
+   259→    } else {
+   260→      setSelected(new Set(filtered.map((r) => r.id)));
+   261→    }
+   262→  }
+   263→
+   264→  async function changeStatus(r: Row, next: string) {
+   265→    setUpdatingId(r.id);
+   266→    try {
+   267→      const res = await fetch(`/api/demo?id=${encodeURIComponent(r.id)}`, {
+   268→        method: "PATCH",
+   269→        headers: { "Content-Type": "application/json" },
+   270→        body: JSON.stringify({ status: next }),
+   271→      });
+   272→      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+   273→      const json = await res.json();
+   274→      const updated = json.row as Row | undefined;
+   275→      setRows((prev) =>
+   276→        prev.map((row) =>
+   277→          row.id === r.id ? { ...row, status: updated?.status ?? next } : row
+   278→        )
+   279→      );
+   280→      track("admin_status_change", {
+   281→        id: r.id,
+   282→        from: r.status,
+   283→        to: next,
+   284→        org: r.org,
+   285→      });
+   286→    } catch (e) {
+   287→      setError(e instanceof Error ? e.message : "Failed to update");
+   288→    } finally {
+   289→      setUpdatingId(null);
+   290→    }
+   291→  }
+   292→
+   293→  async function saveNote(r: Row, override?: string) {
+   294→    setNoteSaving(true);
+   295→    // Use override if provided (Clear button) so we don't race against
+   296→    // async setState; otherwise use the live textarea draft.
+   297→    const value = override !== undefined ? override : noteDraft;
+   298→    try {
+   299→      const res = await fetch(`/api/demo?id=${encodeURIComponent(r.id)}`, {
+   300→        method: "PATCH",
+   301→        headers: { "Content-Type": "application/json" },
+   302→        body: JSON.stringify({ note: value }),
+   303→      });
+   304→      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+   305→      const json = await res.json();
+   306→      const updated = json.row as Row | undefined;
+   307→      setRows((prev) =>
+   308→        prev.map((row) =>
+   309→          row.id === r.id
+   310→            ? { ...row, note: updated?.note ?? value }
+   311→            : row
+   312→        )
+   313→      );
+   314→      track("admin_note_update", {
+   315→        id: r.id,
+   316→        org: r.org,
+   317→        cleared: !value.trim(),
+   318→      });
+   319→      setEditingNoteId(null);
+   320→    } catch (e) {
+   321→      setError(e instanceof Error ? e.message : "Failed to save note");
+   322→    } finally {
+   323→      setNoteSaving(false);
+   324→    }
+   325→  }
+   326→
+   327→  async function bulkDelete() {
+   328→    if (selected.size === 0) return;
+   329→    const ids = Array.from(selected);
+   330→    if (
+   331→      !window.confirm(
+   332→        `Delete ${ids.length} selected demo request${ids.length === 1 ? "" : "s"}? This cannot be undone.`
+   333→      )
+   334→    ) {
+   335→      return;
+   336→    }
+   337→    setBulkDeleting(true);
+   338→    try {
+   339→      const res = await fetch(
+   340→        `/api/demo?ids=${ids.map(encodeURIComponent).join(",")}`,
+   341→        { method: "DELETE" }
+   342→      );
+   343→      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+   344→      const json = await res.json();
+   345→      const deleted = (json.deleted as number | undefined) ?? 0;
+   346→      setRows((prev) => prev.filter((r) => !selected.has(r.id)));
+   347→      track("admin_bulk_delete", { count: deleted });
+   348→      setSelected(new Set());
+   349→    } catch (e) {
+   350→      setError(e instanceof Error ? e.message : "Failed to delete");
+   351→    } finally {
+   352→      setBulkDeleting(false);
+   353→    }
+   354→  }
+   355→
+   356→  async function archiveSelected() {
+   357→    if (selected.size === 0) return;
+   358→    setBulkDeleting(true);
+   359→    try {
+   360→      // Sequential PATCHes — small batch sizes in practice.
+   361→      const ids = Array.from(selected);
+   362→      await Promise.all(
+   363→        ids.map(async (id) => {
+   364→          const r = rows.find((row) => row.id === id);
+   365→          if (!r || r.status === "archived") return;
+   366→          const res = await fetch(`/api/demo?id=${encodeURIComponent(id)}`, {
+   367→            method: "PATCH",
+   368→            headers: { "Content-Type": "application/json" },
+   369→            body: JSON.stringify({ status: "archived" }),
+   370→          });
+   371→          if (res.ok) {
+   372→            track("admin_status_change", {
+   373→              id,
+   374→              from: r.status,
+   375→              to: "archived",
+   376→              org: r.org,
+   377→            });
+   378→          }
+   379→        })
+   380→      );
+   381→      // Refresh from server to get authoritative state.
+   382→      await load();
+   383→      setSelected(new Set());
+   384→    } catch (e) {
+   385→      setError(e instanceof Error ? e.message : "Failed to archive");
+   386→    } finally {
+   387→      setBulkDeleting(false);
+   388→    }
+   389→  }
+   390→
+   391→  function exportCsv() {
+   392→    const header = [
+   393→      "name",
+   394→      "email",
+   395→      "phone",
+   396→      "org",
+   397→      "orgType",
+   398→      "size",
+   399→      "status",
+   400→      "createdAt",
+   401→      "note",
+   402→    ];
+   403→    const lines = filtered.map((r) =>
+   404→      [
+   405→        r.name,
+   406→        r.email,
+   407→        r.phone ?? "",
+   408→        r.org,
+   409→        r.orgType ?? "",
+   410→        r.size ?? "",
+   411→        r.status,
+   412→        new Date(r.createdAt).toISOString(),
+   413→        r.note ?? "",
+   414→      ]
+   415→        .map(escapeCsv)
+   416→        .join(",")
+   417→    );
+   418→    const csv = [header.join(","), ...lines].join("\n");
+   419→    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+   420→    const url = URL.createObjectURL(blob);
+   421→    const a = document.createElement("a");
+   422→    a.href = url;
+   423→    a.download = `doctorooms-demo-requests-${new Date()
+   424→      .toISOString()
+   425→      .slice(0, 10)}.csv`;
+   426→    document.body.appendChild(a);
+   427→    a.click();
+   428→    a.remove();
+   429→    URL.revokeObjectURL(url);
+   430→  }
+   431→
+   432→  // Per-status breakdown export — generates ONE CSV with all filtered rows
+   433→  // and a "status" column (instead of separate files per status). The
+   434→  // rows are grouped by status so the team can pivot / sort in Excel.
+   435→  // Tracks `admin_export_breakdown { count }` for analytics.
+   436→  function exportCsvByStatus() {
+   437→    if (filtered.length === 0) return;
+   438→    track("admin_export_breakdown", { count: filtered.length });
+   439→    const header = ["status", "name", "email", "phone", "org", "orgType", "size", "createdAt", "note"];
+   440→    // Sort: by status (alpha) then by createdAt DESC within each group.
+   441→    const grouped = [...filtered].sort((a, b) => {
+   442→      if (a.status !== b.status) return a.status.localeCompare(b.status);
+   443→      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+   444→    });
+   445→    const lines = grouped.map((r) =>
+   446→      [
+   447→        r.status,
+   448→        r.name,
+   449→        r.email,
+   450→        r.phone ?? "",
+   451→        r.org,
+   452→        r.orgType ?? "",
+   453→        r.size ?? "",
+   454→        new Date(r.createdAt).toISOString(),
+   455→        r.note ?? "",
+   456→      ]
+   457→        .map(escapeCsv)
+   458→        .join(",")
+   459→    );
+   460→    const csv = [header.join(","), ...lines].join("\n");
+   461→    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+   462→    const url = URL.createObjectURL(blob);
+   463→    const a = document.createElement("a");
+   464→    a.href = url;
+   465→    a.download = `doctorooms-demo-breakdown-${new Date()
+   466→      .toISOString()
+   467→      .slice(0, 10)}.csv`;
+   468→    document.body.appendChild(a);
+   469→    a.click();
+   470→    a.remove();
+   471→    URL.revokeObjectURL(url);
+   472→  }
+   473→
+   474→  // Open the row's email in a new mailto compose window. Avoids the
+   475→  // 2-step "copy then paste" loop. Tracks `admin_mailto_open { id }`.
+   476→  function openMailto(r: Row) {
+   477→    track("admin_mailto_open", { id: r.id });
+   478→    const subject = encodeURIComponent(
+   479→      `Doctorooms demo — next steps for ${r.org}`
+   480→    );
+   481→    const body = encodeURIComponent(
+   482→      `Hi ${r.name},\n\nThanks for reaching out about Doctorooms. I'd love to walk you through the platform at a time that works for you.\n\nBest,\n`
+   483→    );
+   484→    window.location.href = `mailto:${r.email}?subject=${subject}&body=${body}`;
+   485→  }
+   486→
+   487→  // Copy a single row's email to clipboard. Falls back to a hidden
+   488→  // textarea + execCommand for non-secure-context browsers. Briefly
+   489→  // flips the row's "Copy" button to a checkmark for visual feedback.
+   490→  async function copyEmail(r: Row) {
+   491→    try {
+   492→      await navigator.clipboard.writeText(r.email);
+   493→    } catch {
+   494→      const ta = document.createElement("textarea");
+   495→      ta.value = r.email;
+   496→      ta.style.position = "fixed";
+   497→      ta.style.opacity = "0";
+   498→      document.body.appendChild(ta);
+   499→      ta.select();
+   500→      try {
+   501→        document.execCommand("copy");
+   502→      } catch {
+   503→        // give up
+   504→      }
+   505→      ta.remove();
+   506→    }
+   507→    setCopiedId(r.id);
+   508→    track("admin_email_copy", { id: r.id });
+   509→    setTimeout(() => setCopiedId((cur) => (cur === r.id ? null : cur)), 1600);
+   510→  }
+   511→
+   512→  // Bulk-copy the emails of every selected row, comma-separated. Useful
+   513→  // for pasting into a BCC field in the team's mail client.
+   514→  async function copySelectedEmails() {
+   515→    const emails = filtered
+   516→      .filter((r) => selected.has(r.id))
+   517→      .map((r) => r.email)
+   518→      .filter(Boolean);
+   519→    if (emails.length === 0) return;
+   520→    const joined = emails.join(", ");
+   521→    try {
+   522→      await navigator.clipboard.writeText(joined);
+   523→    } catch {
+   524→      const ta = document.createElement("textarea");
+   525→      ta.value = joined;
+   526→      ta.style.position = "fixed";
+   527→      ta.style.opacity = "0";
+   528→      document.body.appendChild(ta);
+   529→      ta.select();
+   530→      try {
+   531→        document.execCommand("copy");
+   532→      } catch {
+   533→        // give up
+   534→      }
+   535→      ta.remove();
+   536→    }
+   537→    setBulkCopied(true);
+   538→    track("admin_email_bulk_copy", { count: emails.length });
+   539→    setTimeout(() => setBulkCopied(false), 1800);
+   540→  }
+   541→
+   542→  return (
+   543→    <Dialog open={open} onOpenChange={onOpenChange}>
+   544→      <DialogContent
+   545→        className="max-h-[92vh] overflow-hidden p-0 sm:max-w-5xl"
+   546→      >
+   547→        <div className="flex max-h-[92vh] flex-col">
+   548→          {/* Header */}
+   549→          <DialogHeader className="border-b border-border/60 bg-gradient-to-br from-brand-soft/40 to-transparent px-5 py-4 sm:px-6">
+   550→            <DialogTitle className="flex flex-wrap items-center gap-2 text-xl">
+   551→              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-soft text-brand">
+   552→                <ShieldCheck className="h-4 w-4" />
+   553→              </span>
+   554→              Team admin
+   555→              <Badge className="ml-1 border-border/60 bg-muted/40 text-[10px] font-normal text-muted-foreground">
+   556→                demo-requests
+   557→              </Badge>
+   558→            </DialogTitle>
+   559→            <DialogDescription className="text-xs">
+   560→              Inbound &quot;Book a Private Demo&quot; submissions, persisted to the
+   561→              landing-page SQLite database. No auth in this sandbox view —
+   562→              replace with a real auth gate before sharing the URL broadly.
+   563→              Tip: bookmark <code className="rounded bg-muted/60 px-1 py-0.5 text-[10px]">#admin</code> to
+   564→              reopen this panel directly.
+   565→            </DialogDescription>
+   566→          </DialogHeader>
+   567→
+   568→          {/* KPI row */}
+   569→          <div className="grid grid-cols-2 gap-px border-b border-border/60 bg-border/40 sm:grid-cols-4">
+   570→            {STATUSES.map((s) => {
+   571→              const Icon = s.icon;
+   572→              const active = filter === s.value;
+   573→              return (
+   574→                <button
+   575→                  key={s.value}
+   576→                  type="button"
+   577→                  onClick={() => setFilter(active ? "all" : s.value)}
+   578→                  className={cn(
+   579→                    "flex items-center gap-3 bg-background px-4 py-3 text-left transition-colors hover:bg-muted/30",
+   580→                    active && "bg-muted/40"
+   581→                  )}
+   582→                  aria-pressed={active}
+   583→                >
+   584→                  <span
+   585→                    className={cn(
+   586→                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border",
+   587→                      toneClasses(s.tone)
+   588→                    )}
+   589→                  >
+   590→                    <Icon className="h-4 w-4" />
+   591→                  </span>
+   592→                  <div className="min-w-0">
+   593→                    <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+   594→                      {s.label}
+   595→                    </div>
+   596→                    <div className="text-lg font-semibold tabular-nums leading-tight text-foreground">
+   597→                      {counts[s.value] ?? 0}
+   598→                    </div>
+   599→                  </div>
+   600→                </button>
+   601→              );
+   602→            })}
+   603→          </div>
+   604→
+   605→          {/* Toolbar */}
+   606→          <div className="flex flex-wrap items-center gap-2 border-b border-border/60 px-4 py-3 sm:px-6">
+   607→            <div className="relative min-w-[180px] flex-1">
+   608→              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   609→              <Input
+   610→                value={query}
+   611→                onChange={(e) => setQuery(e.target.value)}
+   612→                placeholder="Search name, email, org…"
+   613→                className="h-9 pl-8"
+   614→                aria-label="Search demo requests"
+   615→              />
+   616→            </div>
+   617→            <Select value={filter} onValueChange={setFilter}>
+   618→              <SelectTrigger className="h-9 w-[150px]" aria-label="Filter by status">
+   619→                <SelectValue />
+   620→              </SelectTrigger>
+   621→              <SelectContent>
+   622→                <SelectItem value="all">All statuses</SelectItem>
+   623→                {STATUSES.map((s) => (
+   624→                  <SelectItem key={s.value} value={s.value}>
+   625→                    {s.label}
+   626→                  </SelectItem>
+   627→                ))}
+   628→              </SelectContent>
+   629→            </Select>
+   630→            <Select
+   631→              value={sortMode}
+   632→              onValueChange={(v) => setSortMode(v as "date" | "name" | "org")}
+   633→            >
+   634→              <SelectTrigger className="h-9 w-[120px]" aria-label="Sort field">
+   635→                <SelectValue />
+   636→              </SelectTrigger>
+   637→              <SelectContent>
+   638→                <SelectItem value="date">Date</SelectItem>
+   639→                <SelectItem value="name">Name</SelectItem>
+   640→                <SelectItem value="org">Org</SelectItem>
+   641→              </SelectContent>
+   642→            </Select>
+   643→            <Button
+   644→              type="button"
+   645→              variant="outline"
+   646→              size="sm"
+   647→              onClick={() => setSortDir((d) => (d === "desc" ? "asc" : "desc"))}
+   648→              className="h-9"
+   649→              aria-label={`Sort ${sortDir === "desc" ? "descending" : "ascending"}`}
+   650→            >
+   651→              {sortDir === "desc" ? (
+   652→                <ArrowDownAZ className="h-3.5 w-3.5" />
+   653→              ) : (
+   654→                <ArrowUpAZ className="h-3.5 w-3.5" />
+   655→              )}
+   656→              {sortDir === "desc" ? "↓" : "↑"}
+   657→            </Button>
+   658→            <Button
+   659→              type="button"
+   660→              variant="outline"
+   661→              size="sm"
+   662→              onClick={() => void load()}
+   663→              disabled={loading}
+   664→              className="h-9"
+   665→            >
+   666→              <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+   667→              Refresh
+   668→            </Button>
+   669→            <Button
+   670→              type="button"
+   671→              variant="ghost"
+   672→              size="sm"
+   673→              onClick={exportCsv}
+   674→              disabled={filtered.length === 0}
+   675→              className="h-9"
+   676→              title="Export filtered rows as a flat CSV"
+   677→            >
+   678→              <ExternalLink className="h-3.5 w-3.5" />
+   679→              Export CSV
+   680→            </Button>
+   681→            <Button
+   682→              type="button"
+   683→              variant="ghost"
+   684→              size="sm"
+   685→              onClick={exportCsvByStatus}
+   686→              disabled={filtered.length === 0}
+   687→              className="h-9"
+   688→              title="Export filtered rows grouped by status (one CSV with a status column)"
+   689→            >
+   690→              <Download className="h-3.5 w-3.5" />
+   691→              By status
+   692→            </Button>
+   693→            <div className="ml-auto hidden items-center gap-1.5 text-[11px] text-muted-foreground sm:flex">
+   694→              <Users className="h-3 w-3" />
+   695→              <span className="tabular-nums">{filtered.length}</span>
+   696→              <span>of</span>
+   697→              <span className="tabular-nums">{rows.length}</span>
+   698→              <span>shown</span>
+   699→              {lastFetch && (
+   700→                <span className="ml-1">
+   701→                  · updated {timeAgo(new Date(lastFetch).toISOString())}
+   702→                </span>
+   703→              )}
+   704→            </div>
+   705→          </div>
+   706→
+   707→          {/* Bulk action bar */}
+   708→          {selected.size > 0 && (
+   709→            <div className="flex flex-wrap items-center gap-2 border-b border-brand/20 bg-brand-soft/20 px-4 py-2 text-[11px] sm:px-6">
+   710→              <span className="font-medium text-brand">
+   711→                <span className="tabular-nums">{selected.size}</span> selected
+   712→              </span>
+   713→              <span className="text-muted-foreground">·</span>
+   714→              <Button
+   715→                type="button"
+   716→                variant="outline"
+   717→                size="sm"
+   718→                onClick={() => void copySelectedEmails()}
+   719→                className={cn(
+   720→                  "h-7 border-brand/40 px-2 text-[11px] hover:bg-brand-soft/40",
+   721→                  bulkCopied
+   722→                    ? "text-growth hover:text-growth"
+   723→                    : "text-brand hover:text-brand"
+   724→                )}
+   725→              >
+   726→                {bulkCopied ? (
+   727→                  <CheckCheck className="h-3 w-3" />
+   728→                ) : (
+   729→                  <ClipboardCopy className="h-3 w-3" />
+   730→                )}
+   731→                {bulkCopied ? "Copied" : "Copy emails"}
+   732→              </Button>
+   733→              <Button
+   734→                type="button"
+   735→                variant="outline"
+   736→                size="sm"
+   737→                onClick={() => void archiveSelected()}
+   738→                disabled={bulkDeleting}
+   739→                className="h-7 border-brand/40 px-2 text-[11px] text-brand hover:bg-brand-soft/40 hover:text-brand"
+   740→              >
+   741→                <Archive className="h-3 w-3" />
+   742→                Archive selected
+   743→              </Button>
+   744→              <Button
+   745→                type="button"
+   746→                variant="outline"
+   747→                size="sm"
+   748→                onClick={() => void bulkDelete()}
+   749→                disabled={bulkDeleting}
+   750→                className="h-7 border-destructive/40 px-2 text-[11px] text-destructive hover:bg-destructive/10 hover:text-destructive"
+   751→              >
+   752→                {bulkDeleting ? (
+   753→                  <Loader2 className="h-3 w-3 animate-spin" />
+   754→                ) : (
+   755→                  <Trash2 className="h-3 w-3" />
+   756→                )}
+   757→                Delete selected
+   758→              </Button>
+   759→              <Button
+   760→                type="button"
+   761→                variant="ghost"
+   762→                size="sm"
+   763→                onClick={() => setSelected(new Set())}
+   764→                className="h-7 px-2 text-[11px]"
+   765→              >
+   766→                <X className="h-3 w-3" />
+   767→                Clear
+   768→              </Button>
+   769→            </div>
+   770→          )}
+   771→
+   772→          {/* Body */}
+   773→          <div className="min-h-0 flex-1 overflow-y-auto">
+   774→            {error && (
+   775→              <div className="m-4 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+   776→                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+   777→                <div>
+   778→                  <div className="font-medium">Couldn&apos;t reach the demo-request store</div>
+   779→                  <div className="text-[11px] opacity-80">{error}</div>
+   780→                </div>
+   781→              </div>
+   782→            )}
+   783→
+   784→            {loading && rows.length === 0 ? (
+   785→              <div className="space-y-3 p-4">
+   786→                {Array.from({ length: 4 }).map((_, i) => (
+   787→                  <div key={i} className="flex items-center gap-3">
+   788→                    <Skeleton className="h-10 w-10 rounded-full" />
+   789→                    <div className="flex-1 space-y-2">
+   790→                      <Skeleton className="h-3.5 w-1/3" />
+   791→                      <Skeleton className="h-3 w-1/2" />
+   792→                    </div>
+   793→                    <Skeleton className="h-7 w-24 rounded-full" />
+   794→                  </div>
+   795→                ))}
+   796→              </div>
+   797→            ) : filtered.length === 0 ? (
+   798→              <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+   799→                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/40 text-muted-foreground">
+   800→                  <Inbox className="h-7 w-7" />
+   801→                </div>
+   802→                <div>
+   803→                  <div className="text-sm font-medium text-foreground">
+   804→                    {rows.length === 0 ? "No demo requests yet" : "No matches"}
+   805→                  </div>
+   806→                  <div className="text-xs text-muted-foreground">
+   807→                    {rows.length === 0
+   808→                      ? "Submit the Book-a-Demo form to see leads here."
+   809→                      : "Try a different search or clear the status filter."}
+   810→                  </div>
+   811→                </div>
+   812→                {rows.length === 0 && (
+   813→                  <Button size="sm" variant="outline" onClick={() => void load()}>
+   814→                    <RefreshCw className="h-3.5 w-3.5" /> Reload
+   815→                  </Button>
+   816→                )}
+   817→              </div>
+   818→            ) : (
+   819→              <>
+   820→                {/* Select-all row */}
+   821→                <label className="flex items-center gap-2 border-b border-border/40 bg-muted/20 px-4 py-2 text-[11px] text-muted-foreground sm:px-6">
+   822→                  <input
+   823→                    type="checkbox"
+   824→                    className="h-3.5 w-3.5 accent-brand"
+   825→                    checked={allFilteredSelected}
+   826→                    onChange={toggleSelectAll}
+   827→                    aria-label="Select all visible demo requests"
+   828→                  />
+   829→                  <span className="tabular-nums">{selected.size}</span> of{" "}
+   830→                  <span className="tabular-nums">{filtered.length}</span> selected
+   831→                </label>
+   832→                <ul className="divide-y divide-border/40">
+   833→                  {filtered.map((r) => {
+   834→                    const meta = statusMeta(r.status);
+   835→                    const StatusIcon = meta.icon;
+   836→                    const next = STATUS_NEXT[r.status] ?? "new";
+   837→                    const isUpdating = updatingId === r.id;
+   838→                    const isSelected = selected.has(r.id);
+   839→                    const isEditingNote = editingNoteId === r.id;
+   840→                    return (
+   841→                      <li
+   842→                        key={r.id}
+   843→                        className={cn(
+   844→                          "grid grid-cols-1 gap-3 px-4 py-3.5 transition-colors hover:bg-muted/20 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:px-6",
+   845→                          isSelected && "bg-brand-soft/20"
+   846→                        )}
+   847→                      >
+   848→                        <div className="flex min-w-0 items-start gap-3">
+   849→                          <input
+   850→                            type="checkbox"
+   851→                            className="mt-1 h-3.5 w-3.5 shrink-0 accent-brand"
+   852→                            checked={isSelected}
+   853→                            onChange={() => toggleSelect(r.id)}
+   854→                            aria-label={`Select ${r.name}`}
+   855→                          />
+   856→                          <div className="min-w-0 flex-1">
+   857→                            <div className="flex flex-wrap items-center gap-2">
+   858→                              <span className="text-sm font-semibold text-foreground">
+   859→                                {r.name}
+   860→                              </span>
+   861→                              <Badge className={cn("border", toneClasses(meta.tone))}>
+   862→                                <StatusIcon className="h-3 w-3" />
+   863→                                {meta.label}
+   864→                              </Badge>
+   865→                              {r.orgType && (
+   866→                                <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+   867→                                  {r.orgType}
+   868→                                </span>
+   869→                              )}
+   870→                              {r.size && (
+   871→                                <span className="text-[10px] text-muted-foreground">
+   872→                                  · {r.size}
+   873→                                </span>
+   874→                              )}
+   875→                              <span className="text-[10px] text-muted-foreground">
+   876→                                · {timeAgo(r.createdAt)}
+   877→                              </span>
+   878→                            </div>
+   879→                            <div className="mt-0.5 flex items-center truncate text-xs text-muted-foreground">
+   880→                              <span className="truncate">{r.org}</span>
+   881→                              <span className="mx-1.5 opacity-40">·</span>
+   882→                              <a
+   883→                                href={`mailto:${r.email}`}
+   884→                                className="text-brand hover:underline"
+   885→                              >
+   886→                                {r.email}
+   887→                              </a>
+   888→                              <button
+   889→                                type="button"
+   890→                                onClick={() => openMailto(r)}
+   891→                                aria-label={`Open mailto compose for ${r.email}`}
+   892→                                title="Open mailto"
+   893→                                className="ml-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-transparent text-muted-foreground/70 transition-colors hover:border-border/60 hover:bg-muted/40 hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand"
+   894→                              >
+   895→                                <MailOpen className="h-3 w-3" />
+   896→                              </button>
+   897→                              <button
+   898→                                type="button"
+   899→                                onClick={() => void copyEmail(r)}
+   900→                                aria-label={`Copy ${r.email} to clipboard`}
+   901→                                title="Copy email"
+   902→                                className={cn(
+   903→                                  "ml-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-transparent transition-colors",
+   904→                                  copiedId === r.id
+   905→                                    ? "text-growth"
+   906→                                    : "text-muted-foreground/70 hover:border-border/60 hover:bg-muted/40 hover:text-brand"
+   907→                                )}
+   908→                              >
+   909→                                {copiedId === r.id ? (
+   910→                                  <CheckCheck className="h-3 w-3" />
+   911→                                ) : (
+   912→                                  <ClipboardCopy className="h-3 w-3" />
+   913→                                )}
+   914→                              </button>
+   915→                              {r.phone && (
+   916→                                <>
+   917→                                  <span className="mx-1.5 opacity-40">·</span>
+   918→                                  <a
+   919→                                    href={`tel:${r.phone}`}
+   920→                                    className="inline-flex items-center gap-1 hover:underline"
+   921→                                  >
+   922→                                    <Phone className="h-3 w-3" /> {r.phone}
+   923→                                  </a>
+   924→                                </>
+   925→                              )}
+   926→                            </div>
+   927→
+   928→                            {/* Note display / inline editor */}
+   929→                            {isEditingNote ? (
+   930→                              <div className="mt-2 space-y-2">
+   931→                                <Textarea
+   932→                                  value={noteDraft}
+   933→                                  onChange={(e) => setNoteDraft(e.target.value)}
+   934→                                  placeholder="Add a private team note: preferred time, specialty, decision stage…"
+   935→                                  rows={3}
+   936→                                  className="text-xs"
+   937→                                  aria-label={`Edit note for ${r.name}`}
+   938→                                  autoFocus
+   939→                                />
+   940→                                <div className="flex items-center gap-2">
+   941→                                  <Button
+   942→                                    type="button"
+   943→                                    size="sm"
+   944→                                    onClick={() => void saveNote(r)}
+   945→                                    disabled={noteSaving}
+   946→                                    className="h-7 px-2.5 text-[11px]"
+   947→                                  >
+   948→                                    {noteSaving ? (
+   949→                                      <Loader2 className="h-3 w-3 animate-spin" />
+   950→                                    ) : (
+   951→                                      <Check className="h-3 w-3" />
+   952→                                    )}
+   953→                                    Save note
+   954→                                  </Button>
+   955→                                  <Button
+   956→                                    type="button"
+   957→                                    size="sm"
+   958→                                    variant="ghost"
+   959→                                    onClick={() => {
+   960→                                      setEditingNoteId(null);
+   961→                                      setNoteDraft("");
+   962→                                    }}
+   963→                                    className="h-7 px-2.5 text-[11px]"
+   964→                                  >
+   965→                                    Cancel
+   966→                                  </Button>
+   967→                                  {r.note && (
+   968→                                    <Button
+   969→                                      type="button"
+   970→                                      size="sm"
+   971→                                      variant="ghost"
+   972→                                      onClick={() => void saveNote(r, "")}
+   973→                                      disabled={noteSaving}
+   974→                                      className="h-7 px-2.5 text-[11px] text-muted-foreground hover:text-destructive"
+   975→                                    >
+   976→                                      Clear
+   977→                                    </Button>
+   978→                                  )}
+   979→                                </div>
+   980→                              </div>
+   981→                            ) : r.note ? (
+   982→                              <button
+   983→                                type="button"
+   984→                                onClick={() => {
+   985→                                  setEditingNoteId(r.id);
+   986→                                  setNoteDraft(r.note ?? "");
+   987→                                }}
+   988→                                className="group mt-1 flex w-full items-start gap-1.5 rounded-md px-1 py-0.5 text-left text-xs italic text-muted-foreground transition-colors hover:bg-muted/40 hover:not-italic"
+   989→                              >
+   990→                                <Pencil className="mt-0.5 h-3 w-3 shrink-0 opacity-50 group-hover:opacity-100" />
+   991→                                <span className="line-clamp-2">&ldquo;{r.note}&rdquo;</span>
+   992→                              </button>
+   993→                            ) : (
+   994→                              <button
+   995→                                type="button"
+   996→                                onClick={() => {
+   997→                                  setEditingNoteId(r.id);
+   998→                                  setNoteDraft("");
+   999→                                }}
+  1000→                                className="mt-1 inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-[11px] text-muted-foreground/70 transition-colors hover:bg-muted/40 hover:text-brand"
+  1001→                              >
+  1002→                                <Pencil className="h-3 w-3" />
+  1003→                                Add team note
+  1004→                              </button>
+  1005→                            )}
+  1006→                          </div>
+  1007→                        </div>
+  1008→
+  1009→                        <div className="flex items-center gap-2 sm:justify-end">
+  1010→                          <Select
+  1011→                            value={r.status}
+  1012→                            onValueChange={(v) => void changeStatus(r, v)}
+  1013→                            disabled={isUpdating}
+  1014→                          >
+  1015→                            <SelectTrigger
+  1016→                              className="h-8 w-[140px] text-xs"
+  1017→                              aria-label={`Change status for ${r.name}`}
+  1018→                            >
+  1019→                              <SelectValue />
+  1020→                            </SelectTrigger>
+  1021→                            <SelectContent>
+  1022→                              {STATUSES.map((s) => (
+  1023→                                <SelectItem key={s.value} value={s.value}>
+  1024→                                  {s.label}
+  1025→                                </SelectItem>
+  1026→                              ))}
+  1027→                            </SelectContent>
+  1028→                          </Select>
+  1029→                          <Button
+  1030→                            type="button"
+  1031→                            size="sm"
+  1032→                            variant="outline"
+  1033→                            className="h-8 px-2.5 text-[11px]"
+  1034→                            onClick={() => void changeStatus(r, next)}
+  1035→                            disabled={isUpdating}
+  1036→                            aria-label={`Advance ${r.name} to ${statusMeta(next).label}`}
+  1037→                          >
+  1038→                            {isUpdating ? (
+  1039→                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+  1040→                            ) : (
+  1041→                              <>→ {statusMeta(next).label}</>
+  1042→                            )}
+  1043→                          </Button>
+  1044→                        </div>
+  1045→                      </li>
+  1046→                    );
+  1047→                  })}
+  1048→                </ul>
+  1049→              </>
+  1050→            )}
+  1051→          </div>
+  1052→
+  1053→          {/* Footer */}
+  1054→          <div className="flex items-center justify-between gap-3 border-t border-border/60 bg-muted/20 px-4 py-3 text-[11px] text-muted-foreground sm:px-6">
+  1055→            <span className="tabular-nums">
+  1056→              {rows.length} total · {counts.new} new · {counts.scheduled} scheduled
+  1057→            </span>
+  1058→            <span className="hidden sm:inline">
+  1059→              Tip: press <kbd>Esc</kbd> to close, or <kbd>Shift</kbd>+<kbd>A</kbd> to reopen later.
+  1060→            </span>
+  1061→          </div>
+  1062→        </div>
+  1063→      </DialogContent>
+  1064→    </Dialog>
+  1065→  );
+  1066→}
+  1067→
