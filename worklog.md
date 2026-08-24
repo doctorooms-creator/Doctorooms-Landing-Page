@@ -211,3 +211,53 @@ Self-verification with agent-browser (golden path):
 Stage Summary:
 - Site is fully interactive and runnable. 14 chapters compose into one continuous product story. All CTAs measurable. Role-aware AI demonstrated. ROI interactive. No console/runtime errors, no broken animations, no fake data. Lint clean.
 - Acceptance criteria (business/product/experience/conversion/ai/performance/responsive/quality) met for a first production pass.
+
+---
+Task ID: 11 (cron round 1)
+Agent: main (15-min webDevReview loop)
+Task: Assess project status, QA via agent-browser, fix bugs or add features + improve styling.
+
+## 1. Current Project Status (assessment)
+- Project is STABLE. Dev server healthy on port 3000; `GET / 200` with sub-second renders; no runtime/console errors.
+- 14 chapters fully composed at `src/app/page.tsx`; golden path (Book a Demo dialog, AI role switcher, ROI sliders) verified in the previous round.
+- `bun run lint` → 0 errors, 0 warnings.
+- No bugs, test failures, or QA issues found this round. Phase is stable → moved to feature/styling additions.
+
+## 2. Completed modifications this round
+QA pass (agent-browser):
+- Reloaded /, waited networkidle, 0 page errors, 0 console errors/warnings.
+- Scrolled sequentially through every chapter id (top, platform, acquisition, doctor, ai, video, queue, journey, operations, ipd, roles, security, roi, demo) and back to top — 0 errors after full traversal.
+
+New features added (3 new components + globals polish):
+- `src/components/doctorooms/scroll-progress.tsx` — **ScrollProgress**: fixed 3px gradient bar (brand→growth) at viewport top, z-60, rAF-throttled, reduced-motion-safe (jumps instead of interpolating). Reads as a global scroll-progress signal above the sticky header.
+- `src/components/doctorooms/chapter-navigator.tsx` — **ChapterNavigator**: right-edge vertical chapter index (lg+ only), 14 dots, each labelled `01..14` + chapter name. IntersectionObserver (`rootMargin: -45%/-45%`) detects active chapter and sets `aria-current="true"`; click smooth-scrolls with 64px sticky-header offset. Active dot widens to a gradient pill; inactive dots show labels on hover/focus.
+- `src/components/doctorooms/back-to-top.tsx` — **BackToTop**: floating circular buttons bottom-right (appear after 1 viewport scroll). Includes (a) outline ArrowUp "Back to top", (b) primary "B" button that opens the Book-a-Demo dialog (`useDemoDialog().open()` + `track("pricing_or_contact_intent",{source:"back-to-top"})`), and (c) a global keyboard shortcut: pressing **`B`** (when not typing in an input/textarea/select/contenteditable and no modifier keys) opens the demo dialog and fires `track("hero_demo_click",{source:"keyboard_shortcut"})`. A `Keyboard` hint chip with a `<kbd>B</kbd>` reveals on hover.
+
+Styling polish (`src/app/globals.css`):
+- Added global `:focus-visible` ring (2px solid brand teal, offset 2px) on all interactive elements — premium accessibility, consistent keyboard focus.
+- Added `kbd` element styling (rounded, bordered, monospace) for the keyboard hint.
+- Added `scroll-padding-top: 5rem` on `html` so anchor jumps clear the sticky header.
+- Added `.text-gradient` utility (brand→growth linear-gradient clip-text) and `.card-glow` utility (translateY lift + brand-tinted shadow on hover) for reusable premium micro-interactions.
+- Selection color tuned to brand teal 28% opacity.
+
+Wiring (`src/app/page.tsx`):
+- Mounted `<ScrollProgress />` and `<ChapterNavigator />` inside `DemoDialogProvider` (above SiteHeader) and `<BackToTop />` after SiteFooter.
+
+Verification (agent-browser):
+- Reload → 0 page errors, 0 console errors.
+- ScrollProgress present (`scrollProgress: true`), ChapterNavigator present with 14 dots (`navDots: 14`).
+- Pressed `B` → demo dialog opened ("See Doctorooms run for your hospital"), analytics `hero_demo_click {source: "keyboard_shortcut"}` fired, Esc closed.
+- Clicked ROI dot (index 12) → `roiTop: 64` (correctly offset for sticky header), `activeChapter: "Go to chapter 13: ROI"` (aria-current correctly applied via IntersectionObserver).
+- Scroll progress read `90%` after scrolling down — gradient bar filling correctly.
+- `bun run lint` → 0 errors, 0 warnings.
+
+## 3. Unresolved issues / risks + next-phase recommendations
+- No bugs or risks introduced. All new features reduced-motion-aware and SSR-safe (guards on `window`).
+- **Recommended next-phase work** (priority order):
+  1. **Enhance AI section (Ch5)** with a voice-input mock (mic button → recording waveform → "Go ahead, I'm listening" → fills the prompt input) and a small command history (last 3 prompts as chips). Reinforces the "Talk to Your Hospital" headline. (todo `f4` deferred from this round.)
+  2. **Add a "Built for your organization" interactive section** (org-type selector: Independent clinic / Multi-specialty hospital / Hospital chain / Lab) that swaps the highlighted module set — adds conversion personalization between Ch9 (HospitalOS) and Ch10 (IPD).
+  3. **Performance**: code-split the 14 sections with `next/dynamic` (ssr:false for the heaviest GSAP-pinned ones like PatientJourney) to reduce initial JS bundle; add `loading.tsx` skeletons.
+  4. **LCP**: audit hero image-equivalents — currently all CSS/SVG mocks so LCP should be the headline; verify with a Lighthouse run.
+  5. **Open Graph image**: generate a branded OG image (1200×630) for social sharing — currently metadata has no og:image.
+
+Handoff: next cron round should pick up item #1 (AI voice mock) or #2 (org-fit selector) and continue polishing.

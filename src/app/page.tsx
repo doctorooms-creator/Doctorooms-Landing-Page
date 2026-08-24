@@ -17,6 +17,9 @@ import { RoleOrbit } from "@/components/doctorooms/role-orbit";
 import { TrustSection } from "@/components/doctorooms/trust-section";
 import { ROICalculator } from "@/components/doctorooms/roi-calculator";
 import { FinalCTA } from "@/components/doctorooms/final-cta";
+import { ScrollProgress } from "@/components/doctorooms/scroll-progress";
+import { ChapterNavigator } from "@/components/doctorooms/chapter-navigator";
+import { BackToTop } from "@/components/doctorooms/back-to-top";
 
 /**
  * Doctorooms — cinematic landing experience.
@@ -26,6 +29,10 @@ export default function Home() {
   return (
     <DemoDialogProvider>
       <div className="relative flex min-h-screen flex-col">
+        {/* Global scroll progress + chapter navigator */}
+        <ScrollProgress />
+        <ChapterNavigator />
+
         {/* Skip to content for keyboard users */}
         <a
           href="#top"
@@ -69,6 +76,9 @@ export default function Home() {
         </main>
 
         <SiteFooter />
+
+        {/* Floating actions: back-to-top + keyboard shortcut to book a demo */}
+        <BackToTop />
       </div>
     </DemoDialogProvider>
   );

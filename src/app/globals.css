@@ -162,14 +162,25 @@
   html {
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
+    scroll-padding-top: 5rem;
   }
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "ss01", "cv01", "cv03";
   }
   ::selection {
-    background: oklch(0.45 0.1 188 / 0.25);
+    background: oklch(0.45 0.1 188 / 0.28);
     color: inherit;
+  }
+  /* Visible keyboard focus everywhere — premium accessibility */
+  :where(a, button, [role="tab"], input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid oklch(0.45 0.1 188);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+  kbd {
+    @apply inline-flex items-center justify-center rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-semibold text-foreground;
+    line-height: 1;
   }
 }
 
@@ -294,6 +305,32 @@
   }
   .scroll-soft::-webkit-scrollbar-track {
     background: transparent;
+  }
+
+  /* Gradient brand text */
+  .text-gradient {
+    background: linear-gradient(
+      90deg,
+      var(--brand),
+      var(--growth)
+    );
+    -webkit-background-clip: text;
+            background-clip: text;
+    color: transparent;
+  }
+
+  /* Premium card glow on hover */
+  .card-glow {
+    transition:
+      transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.35s ease,
+      border-color 0.35s ease;
+  }
+  .card-glow:hover {
+    transform: translateY(-4px);
+    box-shadow:
+      0 1px 0 0 oklch(1 0 0 / 0.5) inset,
+      0 30px 70px -32px oklch(0.3 0.1 188 / 0.4);
   }
 
   /* Skeleton shimmer for product UI placeholders */
