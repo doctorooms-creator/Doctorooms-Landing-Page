@@ -44,9 +44,17 @@ export function SectionSkeleton({
         />
       </div>
       <div className="container-px mx-auto max-w-7xl">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <span className={`h-1.5 w-1.5 rounded-full ${dotTone}`} />
           <div className="h-3 w-32 animate-pulse rounded bg-muted/60" />
+          <div className="ml-auto flex items-center gap-1.5 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+            <span className="dot-pulse" aria-hidden="true">
+              <span style={{ backgroundColor: tone === "growth" ? "var(--color-growth)" : "var(--color-brand)" }} />
+              <span style={{ backgroundColor: tone === "growth" ? "var(--color-growth)" : "var(--color-brand)" }} />
+              <span style={{ backgroundColor: tone === "growth" ? "var(--color-growth)" : "var(--color-brand)" }} />
+            </span>
+            Loading
+          </div>
         </div>
         <div className={`mt-4 h-9 ${titleWidth} max-w-full animate-pulse rounded bg-muted/60`} />
         <div className={`mt-3 h-4 ${bodyWidth} max-w-full animate-pulse rounded bg-muted/40`} />

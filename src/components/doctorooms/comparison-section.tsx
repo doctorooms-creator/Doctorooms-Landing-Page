@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -25,6 +25,10 @@ import { ArrowRight, Check, Layers, Maximize2, Unplug, X } from "lucide-react";
  * Each row is clickable to deep-link to the relevant chapter. Each row
  * ALSO has a "Compare in detail" affordance that opens a focused modal
  * with fragmented-pain / doctorooms-does / why-it-matters bullets.
+ *
+ * Deep-link: `#compare=<URL-encoded dimension>` opens the modal
+ * pre-seeded to that dimension (mirrors the `#admin` pattern). Useful
+ * for the sales team to share a focused comparison view in a meeting.
  * Reduced-motion safe (CSS-revealed, framer only for entrance fade).
  */
 export function ComparisonSection() {
@@ -51,10 +55,45 @@ export function ComparisonSection() {
   function openModalFor(dimension: string, e?: React.MouseEvent) {
     e?.preventDefault();
     e?.stopPropagation();
-    track("comparison_modal_open", { dimension });
+    track("comparison_modal_open", { dimension, source: "row_detail_button" });
     setModalDimension(dimension);
     setModalOpen(true);
   }
+
+  // Deep-link via `#compare=<dimension>`. URL-encoded to handle spaces +
+  // ampersands in dimension names like "Queue & front desk". Cleans
+  // the hash after triggering so subsequent Esc + re-open doesn't loop.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const checkHash = () => {
+      const hash = window.location.hash;
+      if (!hash.startsWith("#compare=")) return;
+      const raw = hash.slice("#compare=".length);
+      const decoded = (() => {
+        try {
+          return decodeURIComponent(raw);
+        } catch {
+          return raw;
+        }
+      })();
+      const match = COMPARISON_ROWS.find((r) => r.dimension === decoded);
+      if (!match) return;
+      track("comparison_modal_open", {
+        dimension: match.dimension,
+        source: "url_hash",
+      });
+      setModalDimension(match.dimension);
+      setModalOpen(true);
+      try {
+        history.replaceState(null, "", window.location.pathname);
+      } catch {
+        // ignore
+      }
+    };
+    checkHash();
+    window.addEventListener("hashchange", checkHash);
+    return () => window.removeEventListener("hashchange", checkHash);
+  }, []);
 
   return (
     <section

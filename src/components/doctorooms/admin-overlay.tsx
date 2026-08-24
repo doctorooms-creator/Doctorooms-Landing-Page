@@ -28,7 +28,9 @@ import {
   ArrowDownAZ,
   ArrowUpAZ,
   Check,
+  CheckCheck,
   CheckCircle2,
+  ClipboardCopy,
   Clock,
   ExternalLink,
   Inbox,
@@ -55,10 +57,11 @@ import {
  * Capabilities:
  *   • Search across name/email/org/orgType
  *   • Filter by status (new / contacted / scheduled / archived)
- *   • Sort by createdAt asc/desc (toggle)
+ *   • Sort by Date / Name / Org, asc or desc
  *   • Inline note editing (PATCH { note }) — team-side context per lead
  *   • Status changes inline (PATCH { status }) — triage workflow
  *   • Batch select + delete (DELETE ?ids=...) for cleanup
+ *   • Per-row Copy email (clipboard) + bulk Copy selected emails
  *   • Export filtered rows to CSV
  *   • KPI counts at a glance — click a KPI to filter by that status
  *
@@ -143,6 +146,7 @@ export function AdminOverlay({
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<string>("all");
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
+  const [sortMode, setSortMode] = useState<"date" | "name" | "org">("date");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [lastFetch, setLastFetch] = useState<number | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -150,6 +154,8 @@ export function AdminOverlay({
   const [noteDraft, setNoteDraft] = useState("");
   const [noteSaving, setNoteSaving] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [bulkCopied, setBulkCopied] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -206,12 +212,19 @@ export function AdminOverlay({
       );
     });
     list.sort((a, b) => {
+      const dir = sortDir === "asc" ? 1 : -1;
+      if (sortMode === "name") {
+        return dir * a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+      }
+      if (sortMode === "org") {
+        return dir * a.org.localeCompare(b.org, undefined, { sensitivity: "base" });
+      }
       const at = new Date(a.createdAt).getTime();
       const bt = new Date(b.createdAt).getTime();
-      return sortDir === "asc" ? at - bt : bt - at;
+      return dir * (at - bt);
     });
     return list;
-  }, [rows, filter, query, sortDir]);
+  }, [rows, filter, query, sortDir, sortMode]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = {
@@ -414,11 +427,65 @@ export function AdminOverlay({
     URL.revokeObjectURL(url);
   }
 
+  // Copy a single row's email to clipboard. Falls back to a hidden
+  // textarea + execCommand for non-secure-context browsers. Briefly
+  // flips the row's "Copy" button to a checkmark for visual feedback.
+  async function copyEmail(r: Row) {
+    try {
+      await navigator.clipboard.writeText(r.email);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = r.email;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+      } catch {
+        // give up
+      }
+      ta.remove();
+    }
+    setCopiedId(r.id);
+    track("admin_email_copy", { id: r.id });
+    setTimeout(() => setCopiedId((cur) => (cur === r.id ? null : cur)), 1600);
+  }
+
+  // Bulk-copy the emails of every selected row, comma-separated. Useful
+  // for pasting into a BCC field in the team's mail client.
+  async function copySelectedEmails() {
+    const emails = filtered
+      .filter((r) => selected.has(r.id))
+      .map((r) => r.email)
+      .filter(Boolean);
+    if (emails.length === 0) return;
+    const joined = emails.join(", ");
+    try {
+      await navigator.clipboard.writeText(joined);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = joined;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+      } catch {
+        // give up
+      }
+      ta.remove();
+    }
+    setBulkCopied(true);
+    track("admin_email_bulk_copy", { count: emails.length });
+    setTimeout(() => setBulkCopied(false), 1800);
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="max-h-[92vh] overflow-hidden p-0 sm:max-w-5xl"
-        aria-describedby="admin-overlay-desc"
       >
         <div className="flex max-h-[92vh] flex-col">
           {/* Header */}
@@ -432,7 +499,7 @@ export function AdminOverlay({
                 demo-requests
               </Badge>
             </DialogTitle>
-            <DialogDescription id="admin-overlay-desc" className="text-xs">
+            <DialogDescription className="text-xs">
               Inbound &quot;Book a Private Demo&quot; submissions, persisted to the
               landing-page SQLite database. No auth in this sandbox view —
               replace with a real auth gate before sharing the URL broadly.
@@ -503,20 +570,33 @@ export function AdminOverlay({
                 ))}
               </SelectContent>
             </Select>
+            <Select
+              value={sortMode}
+              onValueChange={(v) => setSortMode(v as "date" | "name" | "org")}
+            >
+              <SelectTrigger className="h-9 w-[120px]" aria-label="Sort field">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date">Date</SelectItem>
+                <SelectItem value="name">Name</SelectItem>
+                <SelectItem value="org">Org</SelectItem>
+              </SelectContent>
+            </Select>
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => setSortDir((d) => (d === "desc" ? "asc" : "desc"))}
               className="h-9"
-              aria-label={`Sort by created date ${sortDir === "desc" ? "descending" : "ascending"}`}
+              aria-label={`Sort ${sortDir === "desc" ? "descending" : "ascending"}`}
             >
               {sortDir === "desc" ? (
                 <ArrowDownAZ className="h-3.5 w-3.5" />
               ) : (
                 <ArrowUpAZ className="h-3.5 w-3.5" />
               )}
-              {sortDir === "desc" ? "Newest" : "Oldest"}
+              {sortDir === "desc" ? "↓" : "↑"}
             </Button>
             <Button
               type="button"
@@ -561,6 +641,25 @@ export function AdminOverlay({
                 <span className="tabular-nums">{selected.size}</span> selected
               </span>
               <span className="text-muted-foreground">·</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void copySelectedEmails()}
+                className={cn(
+                  "h-7 border-brand/40 px-2 text-[11px] hover:bg-brand-soft/40",
+                  bulkCopied
+                    ? "text-growth hover:text-growth"
+                    : "text-brand hover:text-brand"
+                )}
+              >
+                {bulkCopied ? (
+                  <CheckCheck className="h-3 w-3" />
+                ) : (
+                  <ClipboardCopy className="h-3 w-3" />
+                )}
+                {bulkCopied ? "Copied" : "Copy emails"}
+              </Button>
               <Button
                 type="button"
                 variant="outline"
@@ -707,8 +806,8 @@ export function AdminOverlay({
                                 · {timeAgo(r.createdAt)}
                               </span>
                             </div>
-                            <div className="mt-0.5 truncate text-xs text-muted-foreground">
-                              {r.org}
+                            <div className="mt-0.5 flex items-center truncate text-xs text-muted-foreground">
+                              <span className="truncate">{r.org}</span>
                               <span className="mx-1.5 opacity-40">·</span>
                               <a
                                 href={`mailto:${r.email}`}
@@ -716,6 +815,24 @@ export function AdminOverlay({
                               >
                                 {r.email}
                               </a>
+                              <button
+                                type="button"
+                                onClick={() => void copyEmail(r)}
+                                aria-label={`Copy ${r.email} to clipboard`}
+                                title="Copy email"
+                                className={cn(
+                                  "ml-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-transparent transition-colors",
+                                  copiedId === r.id
+                                    ? "text-growth"
+                                    : "text-muted-foreground/70 hover:border-border/60 hover:bg-muted/40 hover:text-brand"
+                                )}
+                              >
+                                {copiedId === r.id ? (
+                                  <CheckCheck className="h-3 w-3" />
+                                ) : (
+                                  <ClipboardCopy className="h-3 w-3" />
+                                )}
+                              </button>
                               {r.phone && (
                                 <>
                                   <span className="mx-1.5 opacity-40">·</span>

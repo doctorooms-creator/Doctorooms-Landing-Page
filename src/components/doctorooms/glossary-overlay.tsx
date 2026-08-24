@@ -51,17 +51,10 @@ export function GlossaryOverlay({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="max-h-[88vh] overflow-hidden p-0 sm:max-w-3xl"
-        aria-describedby="glossary-desc"
       >
         {/* Radix keeps DialogContent mounted briefly for close transition.
             Only render the body when open so state is fresh on each open. */}
-        {open ? (
-          <GlossaryBody seedTerm={seedTerm ?? null} />
-        ) : (
-          <div className="sr-only" id="glossary-desc">
-            Healthcare terminology reference.
-          </div>
-        )}
+        {open ? <GlossaryBody seedTerm={seedTerm ?? null} /> : null}
       </DialogContent>
     </Dialog>
   );
@@ -114,7 +107,7 @@ function GlossaryBody({ seedTerm }: { seedTerm: string | null }) {
             <span className="tabular-nums">{GLOSSARY_TERMS.length}</span> terms
           </Badge>
         </DialogTitle>
-        <DialogDescription id="glossary-desc" className="text-xs">
+        <DialogDescription className="text-xs">
           Plain-English definitions for the operational and clinical
           terms used on this page. Aimed at admins, investors, founders,
           and journalists — not clinicians. Click a related term chip

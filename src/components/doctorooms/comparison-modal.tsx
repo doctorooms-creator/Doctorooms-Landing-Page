@@ -17,8 +17,10 @@ import { useDemoDialog } from "./demo-dialog";
 import {
   ArrowRight,
   Check,
+  CheckCheck,
   ChevronLeft,
   ChevronRight,
+  Copy,
   Lightbulb,
   Unplug,
   X,
@@ -75,18 +77,13 @@ export function ComparisonModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="max-h-[88vh] overflow-hidden p-0 sm:max-w-3xl"
-        aria-describedby="comparison-modal-desc"
       >
         {open ? (
           <ComparisonBody
             startIndex={startIndex}
             onOpenChange={onOpenChange}
           />
-        ) : (
-          <div className="sr-only" id="comparison-modal-desc">
-            Side-by-side comparison of fragmented tools vs. Doctorooms.
-          </div>
-        )}
+        ) : null}
       </DialogContent>
     </Dialog>
   );
@@ -100,6 +97,7 @@ function ComparisonBody({
   onOpenChange: (v: boolean) => void;
 }) {
   const [index, setIndex] = useState(startIndex);
+  const [copied, setCopied] = useState(false);
   const detail: Detail = COMPARISON_DETAILS[index];
   const { open: openDemo } = useDemoDialog();
 
@@ -157,6 +155,36 @@ function ComparisonBody({
     }, 80);
   }
 
+  // Copy a deep-link URL for this exact comparison dimension. The hash
+  // is consumed by ComparisonSection's hashchange listener on load.
+  // After copy, briefly flip the icon to a checkmark for feedback.
+  async function copyDeepLink() {
+    const url = `${window.location.origin}${window.location.pathname}#compare=${encodeURIComponent(detail.dimension)}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      track("comparison_modal_share", { dimension: detail.dimension });
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // Fallback: select-and-copy via a hidden textarea.
+      const ta = document.createElement("textarea");
+      ta.value = url;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+        setCopied(true);
+        track("comparison_modal_share", { dimension: detail.dimension });
+        setTimeout(() => setCopied(false), 1800);
+      } catch {
+        // give up
+      }
+      ta.remove();
+    }
+  }
+
   return (
     <div className="flex max-h-[88vh] flex-col">
       {/* Header */}
@@ -169,7 +197,7 @@ function ComparisonBody({
             <DialogTitle className="mt-1 text-lg font-semibold leading-tight sm:text-xl">
               {detail.dimension}
             </DialogTitle>
-            <DialogDescription id="comparison-modal-desc" className="mt-1 text-xs">
+            <DialogDescription className="mt-1 text-xs">
               How this step of the journey looks fragmented vs. on Doctorooms.
             </DialogDescription>
           </div>
@@ -265,15 +293,41 @@ function ComparisonBody({
 
       {/* Footer CTA */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 bg-muted/20 px-4 py-3 text-[11px] sm:px-6">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => jumpToChapter(detail.href)}
-          className="h-8 border-brand/40 text-brand hover:bg-brand-soft/40 hover:text-brand"
-        >
-          See it in Doctorooms
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => jumpToChapter(detail.href)}
+            className="h-8 border-brand/40 text-brand hover:bg-brand-soft/40 hover:text-brand"
+          >
+            See it in Doctorooms
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={copyDeepLink}
+            aria-label="Copy deep-link to this comparison view"
+            className={cn(
+              "h-8 gap-1.5 px-2.5 text-[11px]",
+              copied
+                ? "text-growth hover:text-growth"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {copied ? (
+              <>
+                <CheckCheck className="h-3.5 w-3.5" />
+                Link copied
+              </>
+            ) : (
+              <>
+                <Copy className="h-3.5 w-3.5" />
+                Copy deep-link
+              </>
+            )}
+          </Button>
+        </div>
         <div className="flex items-center gap-2">
           <span className="hidden text-muted-foreground sm:inline">
             <kbd>←</kbd> <kbd>→</kbd> to navigate

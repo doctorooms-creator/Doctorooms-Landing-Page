@@ -16,6 +16,7 @@ import { QueueExperience } from "@/components/doctorooms/queue-experience";
 import { HospitalOS } from "@/components/doctorooms/hospital-os";
 import { OrgFit } from "@/components/doctorooms/org-fit";
 import { TrustSection } from "@/components/doctorooms/trust-section";
+import { OutcomesSection } from "@/components/doctorooms/outcomes-section";
 import { FAQSection } from "@/components/doctorooms/faq-section";
 import { ROICalculator } from "@/components/doctorooms/roi-calculator";
 import { RolloutTimeline } from "@/components/doctorooms/rollout-timeline";
@@ -127,6 +128,8 @@ export default function Home() {
           </LazyMount>
           {/* Chapter 12 — Trust & Security */}
           <TrustSection />
+          {/* Chapter 12¼ — Outcomes (testimonials / quotes carousel) */}
+          <OutcomesSection />
           {/* Chapter 12½ — Questions (FAQ) */}
           <FAQSection />
           {/* Chapter 13 — ROI */}

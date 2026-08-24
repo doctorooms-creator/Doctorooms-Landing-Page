@@ -526,3 +526,78 @@
   cursor: help;
 }
 
+/* Vertical variant of divider-gradient — used as a section separator
+   between adjacent columns or as a left/right accent on premium cards. */
+.divider-gradient-vertical {
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    oklch(0.55 0.12 188 / 0.45) 35%,
+    oklch(0.65 0.14 165 / 0.55) 65%,
+    transparent 100%
+  );
+  border: 0;
+}
+
+/* Dot-pulse loader — three dots that pulse in a staggered rhythm. Used
+   by lazy-mount skeletons during chunk fetch. Reduced-motion safe (the
+   global block above flattens the animation). */
+.dot-pulse {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.dot-pulse > span {
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: oklch(0.55 0.12 188 / 0.7);
+  animation: dot-pulse 1.2s ease-in-out infinite;
+}
+.dot-pulse > span:nth-child(2) { animation-delay: 0.15s; }
+.dot-pulse > span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes dot-pulse {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+/* Card-aurora — a slow ambient gradient drift behind premium cards.
+   Used on the outcomes featured quote + ROI output panel.
+   Reduced-motion: animation disabled globally. */
+.card-aurora {
+  position: relative;
+  overflow: hidden;
+}
+.card-aurora::before {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  pointer-events: none;
+  background:
+    radial-gradient(40% 40% at 20% 30%, oklch(0.55 0.12 188 / 0.10), transparent 60%),
+    radial-gradient(40% 40% at 80% 70%, oklch(0.65 0.14 165 / 0.10), transparent 60%);
+  animation: card-aurora-drift 16s ease-in-out infinite alternate;
+  z-index: 0;
+}
+.card-aurora > * {
+  position: relative;
+  z-index: 1;
+}
+@keyframes card-aurora-drift {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  100% { transform: translate(8%, 4%) rotate(2deg); }
+}
+
+/* Outcomes quote fade-in — runs when the active quote changes (keyed
+   by `featured.key` in the React tree so the element remounts). */
+@keyframes outcomes-quote-fade {
+  0% { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Tailwind v4 force-recompile marker — content shift triggers a full
+   Lightning CSS re-emit so the utility rules above reliably appear in
+   the production bundle (works around Turbopack's incremental cache). */
+

@@ -113,7 +113,6 @@ function DemoFormDialog({
     }}>
       <DialogContent
         className="relative max-h-[92vh] overflow-y-auto scroll-soft sm:max-w-[560px]"
-        aria-describedby="demo-dialog-desc"
       >
         <DialogHeader>
           <div className="mb-1 flex items-center gap-2 text-brand">
@@ -125,7 +124,7 @@ function DemoFormDialog({
           <DialogTitle className="text-2xl tracking-tight">
             See Doctorooms run for your hospital
           </DialogTitle>
-          <DialogDescription id="demo-dialog-desc">
+          <DialogDescription>
             A 30-minute walkthrough of patient acquisition, queue, OPD/IPD operations
             and AI workflows — tailored to your organization.
           </DialogDescription>

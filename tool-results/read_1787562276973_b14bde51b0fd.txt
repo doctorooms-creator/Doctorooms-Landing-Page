@@ -1,0 +1,871 @@
+     1→"use client";
+     2→
+     3→import { useCallback, useEffect, useMemo, useState } from "react";
+     4→import {
+     5→  Dialog,
+     6→  DialogContent,
+     7→  DialogDescription,
+     8→  DialogHeader,
+     9→  DialogTitle,
+    10→} from "@/components/ui/dialog";
+    11→import { Button } from "@/components/ui/button";
+    12→import { Input } from "@/components/ui/input";
+    13→import { Badge } from "@/components/ui/badge";
+    14→import { Textarea } from "@/components/ui/textarea";
+    15→import {
+    16→  Select,
+    17→  SelectContent,
+    18→  SelectItem,
+    19→  SelectTrigger,
+    20→  SelectValue,
+    21→} from "@/components/ui/select";
+    22→import { Skeleton } from "@/components/ui/skeleton";
+    23→import { track } from "@/lib/analytics";
+    24→import { cn } from "@/lib/utils";
+    25→import {
+    26→  AlertCircle,
+    27→  Archive,
+    28→  ArrowDownAZ,
+    29→  ArrowUpAZ,
+    30→  Check,
+    31→  CheckCircle2,
+    32→  Clock,
+    33→  ExternalLink,
+    34→  Inbox,
+    35→  Loader2,
+    36→  Mail,
+    37→  Phone,
+    38→  Pencil,
+    39→  RefreshCw,
+    40→  Search,
+    41→  ShieldCheck,
+    42→  Trash2,
+    43→  Users,
+    44→  X,
+    45→} from "lucide-react";
+    46→
+    47→/**
+    48→ * AdminOverlay — in-page team panel (no new route, per the single-route rule).
+    49→ *
+    50→ * Opened by:
+    51→ *   • `Shift + A` (registered by `BackToTop` so all global shortcuts live in one place)
+    52→ *   • the "Team admin" entry added to the keyboard-shortcuts help dialog
+    53→ *   • a `#admin` URL hash deep-link (so the team can bookmark/share)
+    54→ *
+    55→ * Capabilities:
+    56→ *   • Search across name/email/org/orgType
+    57→ *   • Filter by status (new / contacted / scheduled / archived)
+    58→ *   • Sort by createdAt asc/desc (toggle)
+    59→ *   • Inline note editing (PATCH { note }) — team-side context per lead
+    60→ *   • Status changes inline (PATCH { status }) — triage workflow
+    61→ *   • Batch select + delete (DELETE ?ids=...) for cleanup
+    62→ *   • Export filtered rows to CSV
+    63→ *   • KPI counts at a glance — click a KPI to filter by that status
+    64→ *
+    65→ * Reduced-motion safe (CSS only). No auth in this demo sandbox; the
+    66→ * comment in the header makes that clear to the team.
+    67→ */
+    68→
+    69→type Row = {
+    70→  id: string;
+    71→  name: string;
+    72→  email: string;
+    73→  phone?: string | null;
+    74→  org: string;
+    75→  orgType?: string | null;
+    76→  size?: string | null;
+    77→  note?: string | null;
+    78→  source?: string | null;
+    79→  status: string;
+    80→  createdAt: string;
+    81→};
+    82→
+    83→const STATUSES = [
+    84→  { value: "new", label: "New", tone: "brand", icon: Inbox },
+    85→  { value: "contacted", label: "Contacted", tone: "amber", icon: Mail },
+    86→  { value: "scheduled", label: "Scheduled", tone: "growth", icon: Clock },
+    87→  { value: "archived", label: "Archived", tone: "muted", icon: CheckCircle2 },
+    88→] as const;
+    89→
+    90→const STATUS_NEXT: Record<string, string> = {
+    91→  new: "contacted",
+    92→  contacted: "scheduled",
+    93→  scheduled: "archived",
+    94→  archived: "new",
+    95→};
+    96→
+    97→function toneClasses(tone: string) {
+    98→  switch (tone) {
+    99→    case "brand":
+   100→      return "border-brand/30 bg-brand-soft/50 text-brand";
+   101→    case "amber":
+   102→      return "border-amber-500/30 bg-amber-500/10 text-amber-300";
+   103→    case "growth":
+   104→      return "border-growth/30 bg-growth/10 text-growth";
+   105→    default:
+   106→      return "border-border/60 bg-muted/40 text-muted-foreground";
+   107→  }
+   108→}
+   109→
+   110→function statusMeta(v: string) {
+   111→  return STATUSES.find((s) => s.value === v) ?? STATUSES[0];
+   112→}
+   113→
+   114→function timeAgo(iso: string) {
+   115→  const then = new Date(iso).getTime();
+   116→  const diff = Math.max(0, Date.now() - then);
+   117→  const min = Math.floor(diff / 60000);
+   118→  if (min < 1) return "just now";
+   119→  if (min < 60) return `${min}m ago`;
+   120→  const hr = Math.floor(min / 60);
+   121→  if (hr < 24) return `${hr}h ago`;
+   122→  const day = Math.floor(hr / 24);
+   123→  if (day < 30) return `${day}d ago`;
+   124→  const mo = Math.floor(day / 30);
+   125→  return `${mo}mo ago`;
+   126→}
+   127→
+   128→function escapeCsv(v: string) {
+   129→  if (/[",\n]/.test(v)) return `"${v.replace(/"/g, '""')}"`;
+   130→  return v;
+   131→}
+   132→
+   133→export function AdminOverlay({
+   134→  open,
+   135→  onOpenChange,
+   136→}: {
+   137→  open: boolean;
+   138→  onOpenChange: (v: boolean) => void;
+   139→}) {
+   140→  const [rows, setRows] = useState<Row[]>([]);
+   141→  const [loading, setLoading] = useState(false);
+   142→  const [error, setError] = useState<string | null>(null);
+   143→  const [query, setQuery] = useState("");
+   144→  const [filter, setFilter] = useState<string>("all");
+   145→  const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
+   146→  const [updatingId, setUpdatingId] = useState<string | null>(null);
+   147→  const [lastFetch, setLastFetch] = useState<number | null>(null);
+   148→  const [selected, setSelected] = useState<Set<string>>(new Set());
+   149→  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+   150→  const [noteDraft, setNoteDraft] = useState("");
+   151→  const [noteSaving, setNoteSaving] = useState(false);
+   152→  const [bulkDeleting, setBulkDeleting] = useState(false);
+   153→
+   154→  const load = useCallback(async () => {
+   155→    setLoading(true);
+   156→    setError(null);
+   157→    try {
+   158→      const res = await fetch("/api/demo", { cache: "no-store" });
+   159→      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+   160→      const json = await res.json();
+   161→      setRows(Array.isArray(json.rows) ? (json.rows as Row[]) : []);
+   162→      setLastFetch(Date.now());
+   163→    } catch (e) {
+   164→      setError(e instanceof Error ? e.message : "Failed to load");
+   165→    } finally {
+   166→      setLoading(false);
+   167→    }
+   168→  }, []);
+   169→
+   170→  // Open via #admin hash deep-link.
+   171→  useEffect(() => {
+   172→    if (typeof window === "undefined") return;
+   173→    const checkHash = () => {
+   174→      if (window.location.hash === "#admin") {
+   175→        track("admin_panel_open", { source: "url_hash" });
+   176→        onOpenChange(true);
+   177→        // Clean up the hash so subsequent Esc + re-open doesn't auto-trigger.
+   178→        try {
+   179→          history.replaceState(null, "", window.location.pathname);
+   180→        } catch {
+   181→          // ignore
+   182→        }
+   183→      }
+   184→    };
+   185→    checkHash();
+   186→    window.addEventListener("hashchange", checkHash);
+   187→    return () => window.removeEventListener("hashchange", checkHash);
+   188→  }, [onOpenChange]);
+   189→
+   190→  useEffect(() => {
+   191→    if (open && rows.length === 0 && !loading && !error) {
+   192→      void load();
+   193→    }
+   194→  }, [open, load, rows.length, loading, error]);
+   195→
+   196→  const filtered = useMemo(() => {
+   197→    const q = query.trim().toLowerCase();
+   198→    const list = rows.filter((r) => {
+   199→      if (filter !== "all" && r.status !== filter) return false;
+   200→      if (!q) return true;
+   201→      return (
+   202→        r.name.toLowerCase().includes(q) ||
+   203→        r.email.toLowerCase().includes(q) ||
+   204→        r.org.toLowerCase().includes(q) ||
+   205→        (r.orgType ?? "").toLowerCase().includes(q)
+   206→      );
+   207→    });
+   208→    list.sort((a, b) => {
+   209→      const at = new Date(a.createdAt).getTime();
+   210→      const bt = new Date(b.createdAt).getTime();
+   211→      return sortDir === "asc" ? at - bt : bt - at;
+   212→    });
+   213→    return list;
+   214→  }, [rows, filter, query, sortDir]);
+   215→
+   216→  const counts = useMemo(() => {
+   217→    const c: Record<string, number> = {
+   218→      new: 0,
+   219→      contacted: 0,
+   220→      scheduled: 0,
+   221→      archived: 0,
+   222→    };
+   223→    for (const r of rows) {
+   224→      if (c[r.status] != null) c[r.status] += 1;
+   225→    }
+   226→    return c;
+   227→  }, [rows]);
+   228→
+   229→  const allFilteredSelected =
+   230→    filtered.length > 0 && filtered.every((r) => selected.has(r.id));
+   231→
+   232→  function toggleSelect(id: string) {
+   233→    setSelected((prev) => {
+   234→      const next = new Set(prev);
+   235→      if (next.has(id)) next.delete(id);
+   236→      else next.add(id);
+   237→      return next;
+   238→    });
+   239→  }
+   240→
+   241→  function toggleSelectAll() {
+   242→    if (allFilteredSelected) {
+   243→      setSelected(new Set());
+   244→    } else {
+   245→      setSelected(new Set(filtered.map((r) => r.id)));
+   246→    }
+   247→  }
+   248→
+   249→  async function changeStatus(r: Row, next: string) {
+   250→    setUpdatingId(r.id);
+   251→    try {
+   252→      const res = await fetch(`/api/demo?id=${encodeURIComponent(r.id)}`, {
+   253→        method: "PATCH",
+   254→        headers: { "Content-Type": "application/json" },
+   255→        body: JSON.stringify({ status: next }),
+   256→      });
+   257→      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+   258→      const json = await res.json();
+   259→      const updated = json.row as Row | undefined;
+   260→      setRows((prev) =>
+   261→        prev.map((row) =>
+   262→          row.id === r.id ? { ...row, status: updated?.status ?? next } : row
+   263→        )
+   264→      );
+   265→      track("admin_status_change", {
+   266→        id: r.id,
+   267→        from: r.status,
+   268→        to: next,
+   269→        org: r.org,
+   270→      });
+   271→    } catch (e) {
+   272→      setError(e instanceof Error ? e.message : "Failed to update");
+   273→    } finally {
+   274→      setUpdatingId(null);
+   275→    }
+   276→  }
+   277→
+   278→  async function saveNote(r: Row, override?: string) {
+   279→    setNoteSaving(true);
+   280→    // Use override if provided (Clear button) so we don't race against
+   281→    // async setState; otherwise use the live textarea draft.
+   282→    const value = override !== undefined ? override : noteDraft;
+   283→    try {
+   284→      const res = await fetch(`/api/demo?id=${encodeURIComponent(r.id)}`, {
+   285→        method: "PATCH",
+   286→        headers: { "Content-Type": "application/json" },
+   287→        body: JSON.stringify({ note: value }),
+   288→      });
+   289→      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+   290→      const json = await res.json();
+   291→      const updated = json.row as Row | undefined;
+   292→      setRows((prev) =>
+   293→        prev.map((row) =>
+   294→          row.id === r.id
+   295→            ? { ...row, note: updated?.note ?? value }
+   296→            : row
+   297→        )
+   298→      );
+   299→      track("admin_note_update", {
+   300→        id: r.id,
+   301→        org: r.org,
+   302→        cleared: !value.trim(),
+   303→      });
+   304→      setEditingNoteId(null);
+   305→    } catch (e) {
+   306→      setError(e instanceof Error ? e.message : "Failed to save note");
+   307→    } finally {
+   308→      setNoteSaving(false);
+   309→    }
+   310→  }
+   311→
+   312→  async function bulkDelete() {
+   313→    if (selected.size === 0) return;
+   314→    const ids = Array.from(selected);
+   315→    if (
+   316→      !window.confirm(
+   317→        `Delete ${ids.length} selected demo request${ids.length === 1 ? "" : "s"}? This cannot be undone.`
+   318→      )
+   319→    ) {
+   320→      return;
+   321→    }
+   322→    setBulkDeleting(true);
+   323→    try {
+   324→      const res = await fetch(
+   325→        `/api/demo?ids=${ids.map(encodeURIComponent).join(",")}`,
+   326→        { method: "DELETE" }
+   327→      );
+   328→      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+   329→      const json = await res.json();
+   330→      const deleted = (json.deleted as number | undefined) ?? 0;
+   331→      setRows((prev) => prev.filter((r) => !selected.has(r.id)));
+   332→      track("admin_bulk_delete", { count: deleted });
+   333→      setSelected(new Set());
+   334→    } catch (e) {
+   335→      setError(e instanceof Error ? e.message : "Failed to delete");
+   336→    } finally {
+   337→      setBulkDeleting(false);
+   338→    }
+   339→  }
+   340→
+   341→  async function archiveSelected() {
+   342→    if (selected.size === 0) return;
+   343→    setBulkDeleting(true);
+   344→    try {
+   345→      // Sequential PATCHes — small batch sizes in practice.
+   346→      const ids = Array.from(selected);
+   347→      await Promise.all(
+   348→        ids.map(async (id) => {
+   349→          const r = rows.find((row) => row.id === id);
+   350→          if (!r || r.status === "archived") return;
+   351→          const res = await fetch(`/api/demo?id=${encodeURIComponent(id)}`, {
+   352→            method: "PATCH",
+   353→            headers: { "Content-Type": "application/json" },
+   354→            body: JSON.stringify({ status: "archived" }),
+   355→          });
+   356→          if (res.ok) {
+   357→            track("admin_status_change", {
+   358→              id,
+   359→              from: r.status,
+   360→              to: "archived",
+   361→              org: r.org,
+   362→            });
+   363→          }
+   364→        })
+   365→      );
+   366→      // Refresh from server to get authoritative state.
+   367→      await load();
+   368→      setSelected(new Set());
+   369→    } catch (e) {
+   370→      setError(e instanceof Error ? e.message : "Failed to archive");
+   371→    } finally {
+   372→      setBulkDeleting(false);
+   373→    }
+   374→  }
+   375→
+   376→  function exportCsv() {
+   377→    const header = [
+   378→      "name",
+   379→      "email",
+   380→      "phone",
+   381→      "org",
+   382→      "orgType",
+   383→      "size",
+   384→      "status",
+   385→      "createdAt",
+   386→      "note",
+   387→    ];
+   388→    const lines = filtered.map((r) =>
+   389→      [
+   390→        r.name,
+   391→        r.email,
+   392→        r.phone ?? "",
+   393→        r.org,
+   394→        r.orgType ?? "",
+   395→        r.size ?? "",
+   396→        r.status,
+   397→        new Date(r.createdAt).toISOString(),
+   398→        r.note ?? "",
+   399→      ]
+   400→        .map(escapeCsv)
+   401→        .join(",")
+   402→    );
+   403→    const csv = [header.join(","), ...lines].join("\n");
+   404→    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+   405→    const url = URL.createObjectURL(blob);
+   406→    const a = document.createElement("a");
+   407→    a.href = url;
+   408→    a.download = `doctorooms-demo-requests-${new Date()
+   409→      .toISOString()
+   410→      .slice(0, 10)}.csv`;
+   411→    document.body.appendChild(a);
+   412→    a.click();
+   413→    a.remove();
+   414→    URL.revokeObjectURL(url);
+   415→  }
+   416→
+   417→  return (
+   418→    <Dialog open={open} onOpenChange={onOpenChange}>
+   419→      <DialogContent
+   420→        className="max-h-[92vh] overflow-hidden p-0 sm:max-w-5xl"
+   421→        aria-describedby="admin-overlay-desc"
+   422→      >
+   423→        <div className="flex max-h-[92vh] flex-col">
+   424→          {/* Header */}
+   425→          <DialogHeader className="border-b border-border/60 bg-gradient-to-br from-brand-soft/40 to-transparent px-5 py-4 sm:px-6">
+   426→            <DialogTitle className="flex flex-wrap items-center gap-2 text-xl">
+   427→              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-soft text-brand">
+   428→                <ShieldCheck className="h-4 w-4" />
+   429→              </span>
+   430→              Team admin
+   431→              <Badge className="ml-1 border-border/60 bg-muted/40 text-[10px] font-normal text-muted-foreground">
+   432→                demo-requests
+   433→              </Badge>
+   434→            </DialogTitle>
+   435→            <DialogDescription id="admin-overlay-desc" className="text-xs">
+   436→              Inbound &quot;Book a Private Demo&quot; submissions, persisted to the
+   437→              landing-page SQLite database. No auth in this sandbox view —
+   438→              replace with a real auth gate before sharing the URL broadly.
+   439→              Tip: bookmark <code className="rounded bg-muted/60 px-1 py-0.5 text-[10px]">#admin</code> to
+   440→              reopen this panel directly.
+   441→            </DialogDescription>
+   442→          </DialogHeader>
+   443→
+   444→          {/* KPI row */}
+   445→          <div className="grid grid-cols-2 gap-px border-b border-border/60 bg-border/40 sm:grid-cols-4">
+   446→            {STATUSES.map((s) => {
+   447→              const Icon = s.icon;
+   448→              const active = filter === s.value;
+   449→              return (
+   450→                <button
+   451→                  key={s.value}
+   452→                  type="button"
+   453→                  onClick={() => setFilter(active ? "all" : s.value)}
+   454→                  className={cn(
+   455→                    "flex items-center gap-3 bg-background px-4 py-3 text-left transition-colors hover:bg-muted/30",
+   456→                    active && "bg-muted/40"
+   457→                  )}
+   458→                  aria-pressed={active}
+   459→                >
+   460→                  <span
+   461→                    className={cn(
+   462→                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border",
+   463→                      toneClasses(s.tone)
+   464→                    )}
+   465→                  >
+   466→                    <Icon className="h-4 w-4" />
+   467→                  </span>
+   468→                  <div className="min-w-0">
+   469→                    <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+   470→                      {s.label}
+   471→                    </div>
+   472→                    <div className="text-lg font-semibold tabular-nums leading-tight text-foreground">
+   473→                      {counts[s.value] ?? 0}
+   474→                    </div>
+   475→                  </div>
+   476→                </button>
+   477→              );
+   478→            })}
+   479→          </div>
+   480→
+   481→          {/* Toolbar */}
+   482→          <div className="flex flex-wrap items-center gap-2 border-b border-border/60 px-4 py-3 sm:px-6">
+   483→            <div className="relative min-w-[180px] flex-1">
+   484→              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   485→              <Input
+   486→                value={query}
+   487→                onChange={(e) => setQuery(e.target.value)}
+   488→                placeholder="Search name, email, org…"
+   489→                className="h-9 pl-8"
+   490→                aria-label="Search demo requests"
+   491→              />
+   492→            </div>
+   493→            <Select value={filter} onValueChange={setFilter}>
+   494→              <SelectTrigger className="h-9 w-[150px]" aria-label="Filter by status">
+   495→                <SelectValue />
+   496→              </SelectTrigger>
+   497→              <SelectContent>
+   498→                <SelectItem value="all">All statuses</SelectItem>
+   499→                {STATUSES.map((s) => (
+   500→                  <SelectItem key={s.value} value={s.value}>
+   501→                    {s.label}
+   502→                  </SelectItem>
+   503→                ))}
+   504→              </SelectContent>
+   505→            </Select>
+   506→            <Button
+   507→              type="button"
+   508→              variant="outline"
+   509→              size="sm"
+   510→              onClick={() => setSortDir((d) => (d === "desc" ? "asc" : "desc"))}
+   511→              className="h-9"
+   512→              aria-label={`Sort by created date ${sortDir === "desc" ? "descending" : "ascending"}`}
+   513→            >
+   514→              {sortDir === "desc" ? (
+   515→                <ArrowDownAZ className="h-3.5 w-3.5" />
+   516→              ) : (
+   517→                <ArrowUpAZ className="h-3.5 w-3.5" />
+   518→              )}
+   519→              {sortDir === "desc" ? "Newest" : "Oldest"}
+   520→            </Button>
+   521→            <Button
+   522→              type="button"
+   523→              variant="outline"
+   524→              size="sm"
+   525→              onClick={() => void load()}
+   526→              disabled={loading}
+   527→              className="h-9"
+   528→            >
+   529→              <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+   530→              Refresh
+   531→            </Button>
+   532→            <Button
+   533→              type="button"
+   534→              variant="ghost"
+   535→              size="sm"
+   536→              onClick={exportCsv}
+   537→              disabled={filtered.length === 0}
+   538→              className="h-9"
+   539→            >
+   540→              <ExternalLink className="h-3.5 w-3.5" />
+   541→              Export CSV
+   542→            </Button>
+   543→            <div className="ml-auto hidden items-center gap-1.5 text-[11px] text-muted-foreground sm:flex">
+   544→              <Users className="h-3 w-3" />
+   545→              <span className="tabular-nums">{filtered.length}</span>
+   546→              <span>of</span>
+   547→              <span className="tabular-nums">{rows.length}</span>
+   548→              <span>shown</span>
+   549→              {lastFetch && (
+   550→                <span className="ml-1">
+   551→                  · updated {timeAgo(new Date(lastFetch).toISOString())}
+   552→                </span>
+   553→              )}
+   554→            </div>
+   555→          </div>
+   556→
+   557→          {/* Bulk action bar */}
+   558→          {selected.size > 0 && (
+   559→            <div className="flex flex-wrap items-center gap-2 border-b border-brand/20 bg-brand-soft/20 px-4 py-2 text-[11px] sm:px-6">
+   560→              <span className="font-medium text-brand">
+   561→                <span className="tabular-nums">{selected.size}</span> selected
+   562→              </span>
+   563→              <span className="text-muted-foreground">·</span>
+   564→              <Button
+   565→                type="button"
+   566→                variant="outline"
+   567→                size="sm"
+   568→                onClick={() => void archiveSelected()}
+   569→                disabled={bulkDeleting}
+   570→                className="h-7 border-brand/40 px-2 text-[11px] text-brand hover:bg-brand-soft/40 hover:text-brand"
+   571→              >
+   572→                <Archive className="h-3 w-3" />
+   573→                Archive selected
+   574→              </Button>
+   575→              <Button
+   576→                type="button"
+   577→                variant="outline"
+   578→                size="sm"
+   579→                onClick={() => void bulkDelete()}
+   580→                disabled={bulkDeleting}
+   581→                className="h-7 border-destructive/40 px-2 text-[11px] text-destructive hover:bg-destructive/10 hover:text-destructive"
+   582→              >
+   583→                {bulkDeleting ? (
+   584→                  <Loader2 className="h-3 w-3 animate-spin" />
+   585→                ) : (
+   586→                  <Trash2 className="h-3 w-3" />
+   587→                )}
+   588→                Delete selected
+   589→              </Button>
+   590→              <Button
+   591→                type="button"
+   592→                variant="ghost"
+   593→                size="sm"
+   594→                onClick={() => setSelected(new Set())}
+   595→                className="h-7 px-2 text-[11px]"
+   596→              >
+   597→                <X className="h-3 w-3" />
+   598→                Clear
+   599→              </Button>
+   600→            </div>
+   601→          )}
+   602→
+   603→          {/* Body */}
+   604→          <div className="min-h-0 flex-1 overflow-y-auto">
+   605→            {error && (
+   606→              <div className="m-4 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+   607→                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+   608→                <div>
+   609→                  <div className="font-medium">Couldn&apos;t reach the demo-request store</div>
+   610→                  <div className="text-[11px] opacity-80">{error}</div>
+   611→                </div>
+   612→              </div>
+   613→            )}
+   614→
+   615→            {loading && rows.length === 0 ? (
+   616→              <div className="space-y-3 p-4">
+   617→                {Array.from({ length: 4 }).map((_, i) => (
+   618→                  <div key={i} className="flex items-center gap-3">
+   619→                    <Skeleton className="h-10 w-10 rounded-full" />
+   620→                    <div className="flex-1 space-y-2">
+   621→                      <Skeleton className="h-3.5 w-1/3" />
+   622→                      <Skeleton className="h-3 w-1/2" />
+   623→                    </div>
+   624→                    <Skeleton className="h-7 w-24 rounded-full" />
+   625→                  </div>
+   626→                ))}
+   627→              </div>
+   628→            ) : filtered.length === 0 ? (
+   629→              <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
+   630→                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/40 text-muted-foreground">
+   631→                  <Inbox className="h-7 w-7" />
+   632→                </div>
+   633→                <div>
+   634→                  <div className="text-sm font-medium text-foreground">
+   635→                    {rows.length === 0 ? "No demo requests yet" : "No matches"}
+   636→                  </div>
+   637→                  <div className="text-xs text-muted-foreground">
+   638→                    {rows.length === 0
+   639→                      ? "Submit the Book-a-Demo form to see leads here."
+   640→                      : "Try a different search or clear the status filter."}
+   641→                  </div>
+   642→                </div>
+   643→                {rows.length === 0 && (
+   644→                  <Button size="sm" variant="outline" onClick={() => void load()}>
+   645→                    <RefreshCw className="h-3.5 w-3.5" /> Reload
+   646→                  </Button>
+   647→                )}
+   648→              </div>
+   649→            ) : (
+   650→              <>
+   651→                {/* Select-all row */}
+   652→                <label className="flex items-center gap-2 border-b border-border/40 bg-muted/20 px-4 py-2 text-[11px] text-muted-foreground sm:px-6">
+   653→                  <input
+   654→                    type="checkbox"
+   655→                    className="h-3.5 w-3.5 accent-brand"
+   656→                    checked={allFilteredSelected}
+   657→                    onChange={toggleSelectAll}
+   658→                    aria-label="Select all visible demo requests"
+   659→                  />
+   660→                  <span className="tabular-nums">{selected.size}</span> of{" "}
+   661→                  <span className="tabular-nums">{filtered.length}</span> selected
+   662→                </label>
+   663→                <ul className="divide-y divide-border/40">
+   664→                  {filtered.map((r) => {
+   665→                    const meta = statusMeta(r.status);
+   666→                    const StatusIcon = meta.icon;
+   667→                    const next = STATUS_NEXT[r.status] ?? "new";
+   668→                    const isUpdating = updatingId === r.id;
+   669→                    const isSelected = selected.has(r.id);
+   670→                    const isEditingNote = editingNoteId === r.id;
+   671→                    return (
+   672→                      <li
+   673→                        key={r.id}
+   674→                        className={cn(
+   675→                          "grid grid-cols-1 gap-3 px-4 py-3.5 transition-colors hover:bg-muted/20 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:px-6",
+   676→                          isSelected && "bg-brand-soft/20"
+   677→                        )}
+   678→                      >
+   679→                        <div className="flex min-w-0 items-start gap-3">
+   680→                          <input
+   681→                            type="checkbox"
+   682→                            className="mt-1 h-3.5 w-3.5 shrink-0 accent-brand"
+   683→                            checked={isSelected}
+   684→                            onChange={() => toggleSelect(r.id)}
+   685→                            aria-label={`Select ${r.name}`}
+   686→                          />
+   687→                          <div className="min-w-0 flex-1">
+   688→                            <div className="flex flex-wrap items-center gap-2">
+   689→                              <span className="text-sm font-semibold text-foreground">
+   690→                                {r.name}
+   691→                              </span>
+   692→                              <Badge className={cn("border", toneClasses(meta.tone))}>
+   693→                                <StatusIcon className="h-3 w-3" />
+   694→                                {meta.label}
+   695→                              </Badge>
+   696→                              {r.orgType && (
+   697→                                <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+   698→                                  {r.orgType}
+   699→                                </span>
+   700→                              )}
+   701→                              {r.size && (
+   702→                                <span className="text-[10px] text-muted-foreground">
+   703→                                  · {r.size}
+   704→                                </span>
+   705→                              )}
+   706→                              <span className="text-[10px] text-muted-foreground">
+   707→                                · {timeAgo(r.createdAt)}
+   708→                              </span>
+   709→                            </div>
+   710→                            <div className="mt-0.5 truncate text-xs text-muted-foreground">
+   711→                              {r.org}
+   712→                              <span className="mx-1.5 opacity-40">·</span>
+   713→                              <a
+   714→                                href={`mailto:${r.email}`}
+   715→                                className="text-brand hover:underline"
+   716→                              >
+   717→                                {r.email}
+   718→                              </a>
+   719→                              {r.phone && (
+   720→                                <>
+   721→                                  <span className="mx-1.5 opacity-40">·</span>
+   722→                                  <a
+   723→                                    href={`tel:${r.phone}`}
+   724→                                    className="inline-flex items-center gap-1 hover:underline"
+   725→                                  >
+   726→                                    <Phone className="h-3 w-3" /> {r.phone}
+   727→                                  </a>
+   728→                                </>
+   729→                              )}
+   730→                            </div>
+   731→
+   732→                            {/* Note display / inline editor */}
+   733→                            {isEditingNote ? (
+   734→                              <div className="mt-2 space-y-2">
+   735→                                <Textarea
+   736→                                  value={noteDraft}
+   737→                                  onChange={(e) => setNoteDraft(e.target.value)}
+   738→                                  placeholder="Add a private team note: preferred time, specialty, decision stage…"
+   739→                                  rows={3}
+   740→                                  className="text-xs"
+   741→                                  aria-label={`Edit note for ${r.name}`}
+   742→                                  autoFocus
+   743→                                />
+   744→                                <div className="flex items-center gap-2">
+   745→                                  <Button
+   746→                                    type="button"
+   747→                                    size="sm"
+   748→                                    onClick={() => void saveNote(r)}
+   749→                                    disabled={noteSaving}
+   750→                                    className="h-7 px-2.5 text-[11px]"
+   751→                                  >
+   752→                                    {noteSaving ? (
+   753→                                      <Loader2 className="h-3 w-3 animate-spin" />
+   754→                                    ) : (
+   755→                                      <Check className="h-3 w-3" />
+   756→                                    )}
+   757→                                    Save note
+   758→                                  </Button>
+   759→                                  <Button
+   760→                                    type="button"
+   761→                                    size="sm"
+   762→                                    variant="ghost"
+   763→                                    onClick={() => {
+   764→                                      setEditingNoteId(null);
+   765→                                      setNoteDraft("");
+   766→                                    }}
+   767→                                    className="h-7 px-2.5 text-[11px]"
+   768→                                  >
+   769→                                    Cancel
+   770→                                  </Button>
+   771→                                  {r.note && (
+   772→                                    <Button
+   773→                                      type="button"
+   774→                                      size="sm"
+   775→                                      variant="ghost"
+   776→                                      onClick={() => void saveNote(r, "")}
+   777→                                      disabled={noteSaving}
+   778→                                      className="h-7 px-2.5 text-[11px] text-muted-foreground hover:text-destructive"
+   779→                                    >
+   780→                                      Clear
+   781→                                    </Button>
+   782→                                  )}
+   783→                                </div>
+   784→                              </div>
+   785→                            ) : r.note ? (
+   786→                              <button
+   787→                                type="button"
+   788→                                onClick={() => {
+   789→                                  setEditingNoteId(r.id);
+   790→                                  setNoteDraft(r.note ?? "");
+   791→                                }}
+   792→                                className="group mt-1 flex w-full items-start gap-1.5 rounded-md px-1 py-0.5 text-left text-xs italic text-muted-foreground transition-colors hover:bg-muted/40 hover:not-italic"
+   793→                              >
+   794→                                <Pencil className="mt-0.5 h-3 w-3 shrink-0 opacity-50 group-hover:opacity-100" />
+   795→                                <span className="line-clamp-2">&ldquo;{r.note}&rdquo;</span>
+   796→                              </button>
+   797→                            ) : (
+   798→                              <button
+   799→                                type="button"
+   800→                                onClick={() => {
+   801→                                  setEditingNoteId(r.id);
+   802→                                  setNoteDraft("");
+   803→                                }}
+   804→                                className="mt-1 inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-[11px] text-muted-foreground/70 transition-colors hover:bg-muted/40 hover:text-brand"
+   805→                              >
+   806→                                <Pencil className="h-3 w-3" />
+   807→                                Add team note
+   808→                              </button>
+   809→                            )}
+   810→                          </div>
+   811→                        </div>
+   812→
+   813→                        <div className="flex items-center gap-2 sm:justify-end">
+   814→                          <Select
+   815→                            value={r.status}
+   816→                            onValueChange={(v) => void changeStatus(r, v)}
+   817→                            disabled={isUpdating}
+   818→                          >
+   819→                            <SelectTrigger
+   820→                              className="h-8 w-[140px] text-xs"
+   821→                              aria-label={`Change status for ${r.name}`}
+   822→                            >
+   823→                              <SelectValue />
+   824→                            </SelectTrigger>
+   825→                            <SelectContent>
+   826→                              {STATUSES.map((s) => (
+   827→                                <SelectItem key={s.value} value={s.value}>
+   828→                                  {s.label}
+   829→                                </SelectItem>
+   830→                              ))}
+   831→                            </SelectContent>
+   832→                          </Select>
+   833→                          <Button
+   834→                            type="button"
+   835→                            size="sm"
+   836→                            variant="outline"
+   837→                            className="h-8 px-2.5 text-[11px]"
+   838→                            onClick={() => void changeStatus(r, next)}
+   839→                            disabled={isUpdating}
+   840→                            aria-label={`Advance ${r.name} to ${statusMeta(next).label}`}
+   841→                          >
+   842→                            {isUpdating ? (
+   843→                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+   844→                            ) : (
+   845→                              <>→ {statusMeta(next).label}</>
+   846→                            )}
+   847→                          </Button>
+   848→                        </div>
+   849→                      </li>
+   850→                    );
+   851→                  })}
+   852→                </ul>
+   853→              </>
+   854→            )}
+   855→          </div>
+   856→
+   857→          {/* Footer */}
+   858→          <div className="flex items-center justify-between gap-3 border-t border-border/60 bg-muted/20 px-4 py-3 text-[11px] text-muted-foreground sm:px-6">
+   859→            <span className="tabular-nums">
+   860→              {rows.length} total · {counts.new} new · {counts.scheduled} scheduled
+   861→            </span>
+   862→            <span className="hidden sm:inline">
+   863→              Tip: press <kbd>Esc</kbd> to close, or <kbd>Shift</kbd>+<kbd>A</kbd> to reopen later.
+   864→            </span>
+   865→          </div>
+   866→        </div>
+   867→      </DialogContent>
+   868→    </Dialog>
+   869→  );
+   870→}
+   871→

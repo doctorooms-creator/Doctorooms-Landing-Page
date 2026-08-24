@@ -755,3 +755,83 @@ export const ORG_FIT = [
     metric: { label: "Typical scale", value: "Standalone or network" },
   },
 ] as const;
+
+/**
+ * OUTCOMES — Chapter 12¼ "Outcomes" (between Trust and FAQ).
+ *
+ * Five narrative outcome cards, one per organization archetype Doctorooms
+ * serves. Each card is a single quoted paragraph written in the voice of
+ * a decision-maker (hospital administrator, clinic owner, head of growth,
+ * IPD lead, lab director). All cards are QUALITATIVE — no invented metrics,
+ * no fake stat numbers, no synthetic percentages. Where a delta is implied
+ * ("shorter wait", "less re-keying", "less time on the phone"), the phrasing
+ * stays directional so the page remains marketing-true.
+ *
+ * Used by `<OutcomesSection>` (src/components/doctorooms/outcomes-section.tsx).
+ */
+export const OUTCOMES = [
+  {
+    key: "hospital-admin",
+    archetype: "Multi-specialty hospital",
+    role: "Hospital administrator",
+    quote:
+      "Before Doctorooms, our front desk re-keyed every appointment into three systems. Now a booking made online shows up in OPD, queue, and the doctor's morning list — instantly, no hand-off.",
+    accent: "brand",
+  },
+  {
+    key: "clinic-owner",
+    archetype: "Independent clinic",
+    role: "Clinic owner, pediatrician",
+    quote:
+      "I'm discoverable on the patient app again. A new family books me directly, walks in with their history already attached, and leaves with a prescription their spouse can see at home. That used to take two phone calls and a printout.",
+    accent: "growth",
+  },
+  {
+    key: "growth-lead",
+    archetype: "Hospital chain",
+    role: "Head of growth",
+    quote:
+      "We finally compare locations the same way — same definitions for no-show, follow-up, and revenue per doctor. Two minutes in the admin AI, not two days of pivot tables.",
+    accent: "brand",
+  },
+  {
+    key: "ipd-lead",
+    archetype: "Hospital IPD",
+    role: "IPD lead, internal medicine",
+    quote:
+      "Admission to discharge on one timeline. Vitals, orders, results, medications — every shift hands off to the next without me chasing paper or WhatsApp groups.",
+    accent: "growth",
+  },
+  {
+    key: "lab-director",
+    archetype: "Diagnostic lab",
+    role: "Lab director",
+    quote:
+      "Orders from referring clinicians arrive structured, samples stay tracked, and results push back into the doctor's queue — no phone calls, no PDFs, no re-typing.",
+    accent: "brand",
+  },
+] as const;
+
+/**
+ * OUTCOME_KPIS — three qualitative "themes" the outcome cards reinforce.
+ * Used as a compact summary row above the quote cards. Each theme is a
+ * directional statement (not a metric) tied to a buyer's bottom-line
+ * concern: front-desk load, follow-up leakage, and cross-team visibility.
+ */
+export const OUTCOME_KPIS = [
+  {
+    title: "Less re-keying",
+    desc: "A booking made online appears in OPD, queue, and the doctor's list — without retyping.",
+    accent: "brand" as const,
+  },
+  {
+    title: "Less follow-up leakage",
+    desc: "The right patient gets the right next step — referral, repeat test, or follow-up visit — surfaced, not forgotten.",
+    accent: "growth" as const,
+  },
+  {
+    title: "Less cross-team friction",
+    desc: "OPD, IPD, lab, pharmacy, and billing share one patient record — shifts hand off without phone calls or WhatsApp.",
+    accent: "brand" as const,
+  },
+] as const;

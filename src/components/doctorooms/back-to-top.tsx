@@ -194,7 +194,6 @@ export function BackToTop() {
       <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
         <DialogContent
           className="sm:max-w-md"
-          aria-describedby="shortcuts-desc"
         >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -203,7 +202,7 @@ export function BackToTop() {
               </span>
               Keyboard shortcuts
             </DialogTitle>
-            <DialogDescription id="shortcuts-desc">
+            <DialogDescription>
               Move through Doctorooms faster. Shortcuts are ignored while
               you&apos;re typing in a field.
             </DialogDescription>

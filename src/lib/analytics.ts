@@ -24,11 +24,15 @@ export type AnalyticsEvent =
   | "admin_status_change"
   | "admin_note_update"
   | "admin_bulk_delete"
+  | "admin_email_copy"
+  | "admin_email_bulk_copy"
   | "glossary_open"
   | "glossary_lookup"
   | "comparison_modal_open"
   | "comparison_modal_navigate"
+  | "comparison_modal_share"
   | "glossary_inline_open"
+  | "testimonial_quote_cycle"
   | "demo_form_success";
 
 type Payload = Record<string, string | number | boolean | undefined>;
