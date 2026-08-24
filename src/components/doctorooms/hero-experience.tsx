@@ -54,42 +54,61 @@ export function HeroExperience() {
     }
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
-      tl.from("[data-hero-step='eyebrow']", { y: 16, opacity: 0, duration: 0.6 })
-        .from("[data-hero-step='h1'] > span", {
+      tl.fromTo("[data-hero-step='eyebrow']", { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 })
+        .fromTo("[data-hero-step='h1'] > span", {
           yPercent: 110,
           opacity: 0,
+        }, {
+          yPercent: 0,
+          opacity: 1,
           duration: 0.9,
           stagger: 0.08,
         }, "-=0.2")
-        .from("[data-hero-step='sub']", { y: 18, opacity: 0, duration: 0.7 }, "-=0.5")
-        .from("[data-hero-step='cta'] > *", {
+        .fromTo("[data-hero-step='sub']", { y: 18, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7 }, "-=0.5")
+        .fromTo("[data-hero-step='cta'] > *", {
           y: 14,
           opacity: 0,
+        }, {
+          y: 0,
+          opacity: 1,
           duration: 0.6,
           stagger: 0.08,
         }, "-=0.4")
-        .from("[data-hero-step='stat']", {
+        .fromTo("[data-hero-step='stat']", {
           y: 14,
           opacity: 0,
+        }, {
+          y: 0,
+          opacity: 1,
           duration: 0.6,
           stagger: 0.1,
         }, "-=0.3")
-        .from("[data-hero-ui]", {
+        .fromTo("[data-hero-ui]", {
           opacity: 0,
           scale: 0.96,
           y: 30,
+        }, {
+          opacity: 1,
+          scale: 1,
+          y: 0,
           duration: 1.1,
           ease: "power2.out",
         }, "-=0.8")
-        .from("[data-hero-ui='tile']", {
+        .fromTo("[data-hero-ui='tile']", {
           opacity: 0,
           y: 20,
+        }, {
+          opacity: 1,
+          y: 0,
           duration: 0.6,
           stagger: 0.08,
         }, "-=0.6")
-        .from("[data-hero-ai]", {
+        .fromTo("[data-hero-ai]", {
           opacity: 0,
           y: 18,
+        }, {
+          opacity: 1,
+          y: 0,
           duration: 0.7,
         }, "-=0.4");
     }, root.current);
