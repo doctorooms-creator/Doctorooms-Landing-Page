@@ -8,6 +8,7 @@ type Chapter = { id: string; label: string; n: string };
 const CHAPTERS: Chapter[] = [
   { id: "top", label: "The Promise", n: "01" },
   { id: "platform", label: "The Problem", n: "02" },
+  { id: "comparison", label: "The Delta", n: "02½" },
   { id: "acquisition", label: "Acquisition", n: "03" },
   { id: "doctor", label: "Doctor Growth", n: "04" },
   { id: "ai", label: "AI Experience", n: "05" },

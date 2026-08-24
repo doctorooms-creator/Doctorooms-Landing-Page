@@ -5,6 +5,7 @@ import { SiteHeader } from "@/components/doctorooms/site-header";
 import { SiteFooter } from "@/components/doctorooms/site-footer";
 import { HeroExperience } from "@/components/doctorooms/hero-experience";
 import { ProblemConvergence } from "@/components/doctorooms/problem-convergence";
+import { ComparisonSection } from "@/components/doctorooms/comparison-section";
 import { AcquisitionFlow } from "@/components/doctorooms/acquisition-flow";
 import { DoctorGrowth } from "@/components/doctorooms/doctor-growth";
 import { AIAgentExperience } from "@/components/doctorooms/ai-agent-experience";
@@ -52,6 +53,8 @@ export default function Home() {
           <HeroExperience />
           {/* Chapter 2 — The Problem */}
           <ProblemConvergence />
+          {/* Chapter 2½ — Fragmented vs. one platform (comparison) */}
+          <ComparisonSection />
           {/* Chapter 3 — Patient Acquisition */}
           <AcquisitionFlow />
           {/* Chapter 4 — Doctor Growth & Productivity */}

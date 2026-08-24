@@ -183,6 +183,55 @@ export const TRUST_POINTS = [
 export const TRUST_DISCLAIMER =
   "Listed capabilities reflect implemented controls. Doctorooms does not claim HIPAA, ISO 27001, SOC 2, or any certification on this page unless separately verified and approved for marketing.";
 
+export const COMPARISON_ROWS = [
+  {
+    dimension: "Patient discovery & booking",
+    fragmented: "A separate website or listings tool, or none at all",
+    doctorooms: "Doctor, clinic & hospital profiles + online + video booking, built in",
+  },
+  {
+    dimension: "Queue & front desk",
+    fragmented: "Standalone token display, manual sign-in, walk-in chaos",
+    doctorooms: "Smart queue, live position, next-patient call, notifications",
+  },
+  {
+    dimension: "Consultation & EMR",
+    fragmented: "A separate EMR, re-keyed from the booking system",
+    doctorooms: "History, vitals, notes & AI-assisted prescription on one patient record",
+  },
+  {
+    dimension: "Pharmacy & inventory",
+    fragmented: "Pharmacy POS + a different inventory sheet + spreadsheets",
+    doctorooms: "Dispensing, stock, batches, expiry & reorder on one platform",
+  },
+  {
+    dimension: "Lab & diagnostics",
+    fragmented: "Lab software that doesn't talk to the EMR or billing",
+    doctorooms: "Orders → samples → results flow back into the chart automatically",
+  },
+  {
+    dimension: "Billing & insurance",
+    fragmented: "Billing tool + insurance desk + manual reconciliation",
+    doctorooms: "Estimates, claims, receipts & reconciliation connected to every visit",
+  },
+  {
+    dimension: "Reports & visibility",
+    fragmented: "Exports stitched together in spreadsheets, always delayed",
+    doctorooms: "Operational, clinical & financial views live across departments",
+  },
+  {
+    dimension: "AI assistance",
+    fragmented: "Not possible across disconnected tools",
+    doctorooms: "Role-aware AI: intent → scoped data → draft action → confirmation",
+  },
+] as const;
+
+export const COMPARISON_STATS = [
+  { fragmented: "5–10 disconnected tools", doctorooms: "1 connected platform" },
+  { fragmented: "Data re-entered at every step", doctorooms: "One patient record, end-to-end" },
+  { fragmented: "Visibility = exports + spreadsheets", doctorooms: "Live, role-based reporting" },
+] as const;
+
 export const FAQ_ITEMS = [
   {
     key: "isolation",

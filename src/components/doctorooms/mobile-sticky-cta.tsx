@@ -20,6 +20,7 @@ import { CalendarCheck } from "lucide-react";
 const CHAPTER_LABELS: { id: string; label: string }[] = [
   { id: "top", label: "The Promise" },
   { id: "platform", label: "The Problem" },
+  { id: "comparison", label: "The Delta" },
   { id: "acquisition", label: "Acquisition" },
   { id: "doctor", label: "Doctor Growth" },
   { id: "ai", label: "AI Experience" },

@@ -30,3 +30,22 @@ model Post {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+/// Inbound "Book a Private Demo" requests submitted from the landing page.
+/// Persisted so the team can review and follow up; the /api/demo route writes here.
+model DemoRequest {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  org       String
+  orgType   String?
+  size      String?
+  note      String?
+  source    String   @default("landing")
+  status    String   @default("new")
+  createdAt DateTime @default(now())
+
+  @@index([status])
+  @@index([createdAt])
+}

@@ -84,6 +84,49 @@ export default function RootLayout({
       >
         {children}
         <Toaster />
+        {/* Structured data for richer SERP appearance */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@graph": [
+                {
+                  "@type": "SoftwareApplication",
+                  name: "Doctorooms",
+                  applicationCategory: "BusinessApplication",
+                  operatingSystem: "Web",
+                  description:
+                    "Healthcare growth and operating platform that connects patient discovery, booking, physical and video consultation, queue, care workflows, hospital operations, follow-up, and AI-powered workflows in one connected platform.",
+                  url: siteUrl,
+                  offers: {
+                    "@type": "Offer",
+                    availability: "https://schema.org/InStock",
+                    price: "0",
+                    priceCurrency: "INR",
+                    description:
+                      "Book a private 30-minute walkthrough tailored to your organization.",
+                  },
+                  featureList: [
+                    "Patient discovery & booking",
+                    "Physical and video consultation",
+                    "Smart queue with live position",
+                    "OPD, IPD, lab, pharmacy, billing, inventory, OT, insurance, reports, documents",
+                    "Role-aware AI assistance",
+                  ],
+                },
+                {
+                  "@type": "Organization",
+                  name: "Doctorooms",
+                  url: siteUrl,
+                  slogan: "More Patients. Smarter Operations. One Intelligent Platform.",
+                  description:
+                    "Doctorooms is a healthcare growth and operating platform connecting discovery, consultation, operations and AI workflows.",
+                },
+              ],
+            }),
+          }}
+        />
       </body>
     </html>
   );

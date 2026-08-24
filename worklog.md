@@ -332,3 +332,71 @@ Task: Assess project status, QA via agent-browser, fix bugs or add features + im
 
 Handoff: next cron round should pick up item #2 (comparison section) or #1 (code-splitting) and continue polishing. The site is feature-rich and stable; incremental conversion + performance work is the frontier.
 
+
+---
+Task ID: 13 (cron round 3)
+Agent: main (15-min webDevReview loop, continued)
+Task: Assess project status, QA via agent-browser, fix bugs or add features + improve styling.
+
+## 1. Current Project Status (assessment)
+- Project is STABLE. Dev server healthy on port 3000; `GET / 200` sub-second; no runtime/console errors.
+- Prior round (Task 12) shipped: FAQ accordion section (Ch12½), keyboard shortcuts help dialog (`?`/`T`/`B`/`Esc`), mobile sticky CTA bar, branded OG image + metadata. All verified working.
+- QA this round: reloaded page, set up console.error capture, scrolled through all 17 sections (top → demo) → 0 page errors, 0 console errors. No bugs to fix.
+- `bun run lint` → 0 errors, 0 warnings.
+- Phase is stable → moved to NEW feature/styling additions this round, picking up items #2 (comparison section), #4 (JSON-LD), and #5 (demo persistence) from the prior round's next-phase recommendations.
+
+## 2. Completed modifications this round
+
+### New feature: "Fragmented vs. one platform" comparison section (Chapter 02½)
+- `src/components/doctorooms/comparison-section.tsx` — new section between Problem (Ch2) and Acquisition (Ch3):
+  * Dark `ink-section` continuing the Problem chapter's cinematic backdrop (bg-grid-ink + brand/growth aurora blobs) so the convergence story flows Problem → Delta → Acquisition without a jarring light/dark flip.
+  * Eyebrow "Chapter 02½ — The Delta", display-2 headline "Stitched-together tools, or one connected platform." with brand→growth gradient on the second half.
+  * **Stat row** (3 cards): each shows Fragmented (amber/warn tone, Unplug icon) vs Doctorooms (brand tone, Layers icon) with a hairline divider — the 3 high-level deltas from `COMPARISON_STATS` (5–10 tools → 1 platform; re-entered data → one record; exports → live reporting).
+  * **Desktop table** (lg+): 3-column grid (Step of the journey | Fragmented approach | Doctorooms) with 8 rows from `COMPARISON_ROWS`. Each fragmented cell has an amber X circle, each Doctorooms cell has a brand Check circle. Rows fade-in via framer-motion whileInView with staggered delay (reduced-motion renders static). Hover row tint.
+  * **Mobile/tablet cards**: each dimension becomes a stacked card with the dimension label + a Fragmented mini-row (amber-tinted border) + a Doctorooms mini-row (brand-tinted border). Same 8 rows.
+  * CTA row: "See Doctorooms for my hospital" (primary, tracks `platform_explore_click {source:"comparison"}` → useDemoDialog.open), "Walk the patient journey" (outline → #journey), reassurance line.
+- `src/data/doctorooms.ts` — added `COMPARISON_ROWS` (8 dimensions: discovery & booking, queue, EMR, pharmacy & inventory, lab, billing & insurance, reports, AI assistance) and `COMPARISON_STATS` (3 high-level deltas).
+- `src/app/page.tsx` — imported + mounted `ComparisonSection` between ProblemConvergence and AcquisitionFlow.
+- `src/components/doctorooms/chapter-navigator.tsx` — added `{ id: "comparison", label: "The Delta", n: "02½" }` (navigator now tracks 15 chapters).
+- `src/components/doctorooms/mobile-sticky-cta.tsx` — added "comparison"/"The Delta" to CHAPTER_LABELS so the mobile bar shows the right label when the section is in view.
+
+### New feature: JSON-LD structured data (SEO)
+- `src/app/layout.tsx` — added a `<script type="application/ld+json">` in `<body>` with a `@graph` of two schema.org nodes:
+  * `SoftwareApplication` (name, applicationCategory BusinessApplication, operatingSystem Web, description, url, Offer with price 0 INR, 5-item featureList).
+  * `Organization` (name, url, slogan, description).
+  * Rendered server-side, no hydration cost, valid schema.org for richer SERP appearance. Verified in DOM: both nodes parse, featureList has 5 entries.
+
+### New feature: Demo request persistence via Prisma (real backend)
+- `prisma/schema.prisma` — added `DemoRequest` model: id (cuid), name, email, phone?, org, orgType?, size?, note?, source (default "landing"), status (default "new"), createdAt. Indexed on `status` and `createdAt` for the team's review queries.
+- Ran `bun run db:push` → schema synced to SQLite at `db/custom.db`, Prisma Client regenerated.
+- `src/app/api/demo/route.ts` — rewrote the POST handler to persist via `db.demoRequest.create({ data })`:
+  * Validates name/email/org required fields (400 on missing).
+  * Trims + length-caps all string inputs (name/email 200/320, others 2000) for safety.
+  * Persists to SQLite; if the DB write throws, falls back to console-logging so the conversion path is never broken by infra (graceful degradation).
+  * Added a GET handler (read-only, no auth in sandbox) that returns the 50 most recent requests ordered by createdAt desc — lets the team review inbound demo requests at `/api/demo`.
+- End-to-end verified: filled the demo form (Dr. Priya Sharma / priya@sharmahospital.in / Sharma Multi-Specialty Hospital / Multi-specialty hospital / 50–200 beds) → POST /api/demo 200 → dev log shows the actual `prisma:query INSERT INTO main.DemoRequest (...) RETURNING ...` SQL → `curl /api/demo` returns the persisted row with a cuid `id`, correct fields, `status:"new"`, and a real `createdAt` timestamp.
+
+### Styling polish
+- Comparison section introduces a cohesive amber-for-fragmented / brand-for-Doctorooms color language (X circles vs Check circles) that scans instantly. Stat cards reuse the hairline divider + uppercase eyebrow pattern from existing sections. Mobile cards use bordered tinted mini-rows (amber-500/20 border, brand/20 border) for clear visual separation without extra icons.
+- Screenshots saved for visual reference: `download/comparison-section.png` (desktop) and `download/comparison-section-mobile.png` (mobile 390×844).
+
+## 3. Verification (agent-browser + curl)
+- Reload → 0 page errors, 0 console errors.
+- Full 17-section scroll-through (top → demo, including new #comparison) → 0 errors after traversal.
+- Comparison section: scrolled to #comparison → heading renders, all 8 dimension labels present (Patient discovery & booking / Queue & front desk / Consultation & EMR / Pharmacy & inventory / Lab & diagnostics / Billing & insurance / Reports & visibility / AI assistance), 27 grid cells in desktop table (1 header row × 3 cols + 8 rows × 3 cols), CTA buttons present.
+- Chapter navigator: now 15 dots (added "The Delta" at 02½).
+- Demo form → Prisma: opened dialog, filled form, submitted → POST /api/demo 200 in 405ms → dev log shows `INSERT INTO main.DemoRequest` SQL → `curl http://localhost:3000/api/demo` returns `{"ok":true,"count":1,"rows":[{...Dr. Priya Sharma...}]}`. Record durably persisted.
+- JSON-LD: `document.querySelector('script[type="application/ld+json"]')` returns a node; parsed `@graph` has `SoftwareApplication` (name "Doctorooms", 5 features) + `Organization`. Valid schema.org.
+- Regression: OrgFit, AI voice, FAQ accordion, keyboard shortcuts dialog, mobile sticky CTA all unchanged and still working.
+- `bun run lint` → 0 errors, 0 warnings.
+
+## 4. Unresolved issues / risks + next-phase recommendations
+- No bugs introduced. The transient `ComparisonSection is not defined` 500 in the dev log was a one-time Turbopack hot-reload miss (page.tsx edited while the new file's import was being resolved); it self-recovered on the next compile and does not reproduce on a clean reload.
+- **Recommended next-phase work** (priority order):
+  1. **Performance — code-splitting**: the page now has 17 sections + 4 floating UI clusters. Use `next/dynamic` with `ssr:false` for the heaviest GSAP-pinned sections (PatientJourney, RoleOrbit, IPDJourney, ComparisonSection's framer whileInView) to shrink initial JS and defer off-screen work. Add `loading.tsx` skeletons. Initial render is still sub-second, so this is an optimization, not a fix.
+  2. **Admin review view**: a lightweight `/admin/demo-requests` route (protected by a simple bearer token or NextAuth in this sandbox) that renders the persisted DemoRequest rows as a table with status workflow (new → contacted → scheduled). Turns the persistence layer into a usable team tool.
+  3. **Comparison section interactivity**: let a visitor click a row to deep-link into the relevant chapter (e.g. clicking "Lab & diagnostics" → scroll to the IPD/hospital-os section where the lab module lives). Reinforces the delta → product mapping.
+  4. **Lighthouse / Core Web Vitals**: run a real Lighthouse pass to baseline LCP/CLS/INP now that JSON-LD + the comparison table add DOM weight. LCP candidate remains the hero headline.
+  5. **A11y audit**: run axe-core on the full page to catch any ARIA/label/contrast regressions from the new comparison table (the amber-on-dark fragmented cells should be checked for contrast).
+
+Handoff: next cron round should pick up item #2 (admin review view — makes the new persistence layer usable) or #1 (code-splitting for performance) and continue polishing. The site now has a complete conversion path (discovery → comparison → story → FAQ → ROI → demo form → persisted lead), SEO foundations (OG image + JSON-LD), and premium UX (keyboard shortcuts, chapter nav, mobile sticky CTA).
