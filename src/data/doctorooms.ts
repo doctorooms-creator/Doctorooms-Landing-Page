@@ -183,6 +183,51 @@ export const TRUST_POINTS = [
 export const TRUST_DISCLAIMER =
   "Listed capabilities reflect implemented controls. Doctorooms does not claim HIPAA, ISO 27001, SOC 2, or any certification on this page unless separately verified and approved for marketing.";
 
+export const FAQ_ITEMS = [
+  {
+    key: "isolation",
+    q: "Is our hospital\u2019s data isolated from other organizations?",
+    a: "Doctorooms is multi-tenant by design. Hospital, doctor, staff and patient data stays scoped per tenant. A user only ever sees what their role in their organization is authorized to access \u2014 not another hospital\u2019s records.",
+  },
+  {
+    key: "start-small",
+    q: "Can we start with one module and expand later?",
+    a: "Yes. Organizations often begin with discovery, booking and queue \u2014 or just OPD and pharmacy \u2014 and add IPD, lab, billing, OT or insurance as they grow. Every module stays connected on the same platform, so expansion does not mean re-integrating a new tool.",
+  },
+  {
+    key: "rollout",
+    q: "How long does a typical rollout take?",
+    a: "It depends on your scope: a single clinic can go live quickly with discovery, booking and queue, while a multi-specialty hospital adding IPD, lab, pharmacy, billing and insurance takes longer to configure and train. We scope a rollout plan with your team during onboarding.",
+  },
+  {
+    key: "ai-silent",
+    q: "Does the AI take actions without a human?",
+    a: "No. Sensitive actions are proposed, not silently executed. The AI parses intent, checks role authorization, and returns an answer or a draft action that requires human confirmation where appropriate. Every action is auditable.",
+  },
+  {
+    key: "existing-systems",
+    q: "We already use a billing / lab / pharmacy tool. Do we have to rip it out?",
+    a: "Not necessarily on day one. Many teams start with the modules that create the most friction \u2014 discovery, booking, queue \u2014 and migrate billing, lab or pharmacy onto Doctorooms over time so data stops being re-entered across systems. We can discuss what to connect first.",
+  },
+  {
+    key: "support",
+    q: "What support and training is included?",
+    a: "Onboarding covers configuration, role setup and staff training for the modules you go live with. Ongoing support is handled by the Doctorooms team. Specific SLAs, training hours and response times are scoped per engagement \u2014 we share details in a private walkthrough.",
+  },
+  {
+    key: "certifications",
+    q: "Is Doctorooms HIPAA / ISO 27001 / SOC 2 certified?",
+    a: "We do not claim HIPAA, ISO 27001, SOC 2 or any certification on this page unless separately verified and approved for marketing. The security page lists implemented controls \u2014 role-based access, tenant isolation, authentication, auditability, controlled workflows and operational safeguards.",
+  },
+] as const;
+
+export const KEYBOARD_SHORTCUTS = [
+  { keys: ["B"], label: "Open the Book-a-Demo dialog", desc: "Skip to the conversion form from anywhere." },
+  { keys: ["?"], label: "Open this keyboard shortcuts panel", desc: "You are here." },
+  { keys: ["Esc"], label: "Close any open dialog", desc: "Dismiss overlays and restore focus." },
+  { keys: ["T"], label: "Scroll back to the top", desc: "Jump to the hero of the page." },
+] as const;
+
 export const ROI_DRIVERS = [
   {
     key: "patient-flow",

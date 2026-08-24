@@ -11,7 +11,7 @@ export function SiteFooter() {
   const { open } = useDemoDialog();
   return (
     <footer className="mt-auto border-t border-border/60 bg-background">
-      <div className="container-px mx-auto max-w-7xl py-12">
+      <div className="container-px mx-auto max-w-7xl py-12 pb-24 lg:pb-12">
         <div className="grid gap-10 md:grid-cols-12">
           {/* Brand */}
           <div className="md:col-span-5">

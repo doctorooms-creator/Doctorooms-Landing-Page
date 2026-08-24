@@ -261,3 +261,74 @@ Verification (agent-browser):
   5. **Open Graph image**: generate a branded OG image (1200×630) for social sharing — currently metadata has no og:image.
 
 Handoff: next cron round should pick up item #1 (AI voice mock) or #2 (org-fit selector) and continue polishing.
+
+---
+Task ID: 12 (cron round 2)
+Agent: main (15-min webDevReview loop, continued)
+Task: Assess project status, QA via agent-browser, fix bugs or add features + improve styling.
+
+## 1. Current Project Status (assessment)
+- Project is STABLE and FURTHER ALONG than the prior summary indicated. Dev server healthy on port 3000; `GET / 200` sub-second; no runtime/console errors.
+- Discovered that BOTH previously-deferred priority items were ALREADY COMPLETE from a prior in-context round:
+  - **AI voice-input mock** (mic → recording waveform → transcribing → fills transcript → sends prompt) is live in `ai-agent-experience.tsx` (`VoiceInputBar` + `Waveform` + `micState` machine + `selectExample(next, true)`).
+  - **"Built for your organization" interactive section** (`org-fit.tsx`) is live with the 4-type selector (clinic/hospital/chain/lab), animated module grid where relevant modules light up brand-teal and irrelevant ones fade, AnimatePresence panel swap, `ORG_FIT` data in `doctorooms.ts`.
+- Verified both work end-to-end via agent-browser: OrgFit tab click → headline + module highlight swap (AnimatePresence `mode="wait"` timing accounted for); AI mic click → "Stop recording" → stop → "Replay: Show Rahul's latest visit." chip appears in Recent history. 0 console errors.
+- Phase is stable → moved to NEW feature/styling additions this round.
+
+## 2. Completed modifications this round
+
+### New feature: FAQ accordion section (Chapter 12½)
+- `src/components/doctorooms/faq-section.tsx` — new section between Trust (Ch12) and ROI (Ch13):
+  * Two-column layout: left sticky intro (eyebrow "Chapter 12½ — Questions", display-2 headline with gradient "already asking." accent, subcopy, HelpCircle disclaimer card, "Ask my question in a demo" CTA → useDemoDialog + track("hero_demo_click",{source:"faq"}), "See security controls" outline link to #security).
+  * Right: shadcn Accordion (single, collapsible) wrapped in a rounded-2xl card. 7 FAQ items numbered 01–07 with mono accent. Active item gets `bg-brand-soft/40` tint.
+  * Truthful answers only — no invented timelines, no certification claims, consistent with the Trust disclaimer. Covers: data isolation, start-small rollout, rollout duration (scoped per engagement), AI never acts silently, existing-systems migration, support/training, and an explicit "We do not claim HIPAA / ISO 27001 / SOC 2 on this page" answer.
+  * Tracks `faq_expand { item: <key> }` when an item is opened.
+  * useReveal staggered reveal. aurora-blob backdrop.
+- `src/data/doctorooms.ts` — added `FAQ_ITEMS` (7 entries) and `KEYBOARD_SHORTCUTS` (4 entries: B / ? / Esc / T).
+- `src/lib/analytics.ts` — added `faq_expand` and `keyboard_shortcuts_open` to the `AnalyticsEvent` union.
+
+### New feature: Keyboard shortcuts help dialog (`?`)
+- Rewrote `src/components/doctorooms/back-to-top.tsx` to own ALL global keyboard shortcuts + the help dialog:
+  * Shortcuts: `B` → open Book-a-Demo (preserved), `T` → smooth-scroll to top (NEW), `?` → open shortcuts dialog (NEW). Esc handled natively by Radix Dialog.
+  * Visible cluster now has THREE circular buttons: "?" (shortcuts), "B" (demo), ↑ (back-to-top). Hint chip updated to show all three keys.
+  * Dialog (`@/components/ui/dialog`) shows `KEYBOARD_SHORTCUTS` data: each row = label + desc + `<kbd>` key chips. Includes tip about right-edge chapter dots + Close button.
+  * Tracks `keyboard_shortcuts_open { source: "keyboard_shortcut" | "floating_button" }`.
+  * Ignores shortcuts while typing in inputs/textareas/selects/contenteditable or with meta/ctrl/alt.
+
+### New feature: Mobile sticky CTA bar
+- `src/components/doctorooms/mobile-sticky-cta.tsx` — slim fixed bottom bar, `lg:hidden` (no clash with desktop chapter navigator / floating BackToTop cluster):
+  * Appears after the user scrolls past 0.85× viewport (first viewport stays cinematic).
+  * Left: "Now reading" + active chapter label (IntersectionObserver, rootMargin -45%/-45%, tracks all 16 section ids including org-fit + faq).
+  * Right: compact "Book a Demo" button → useDemoDialog + track("hero_demo_click",{source:"mobile_sticky_cta"}).
+  * Respects iOS safe area via `env(safe-area-inset-bottom)` padding on the bar.
+- `src/components/doctorooms/site-footer.tsx` — added `pb-24 lg:pb-12` so the sticky bar never covers footer content on mobile.
+
+### Open Graph image + metadata
+- Generated branded OG image via the image-generation skill (z-ai CLI): abstract premium healthcare-tech background, deep teal + emerald gradient, heartbeat/pulse motif, no text. Saved to `public/og.png` (1344×768, ~70KB; note: 1440×720 rejected by API for non-multiple-of-32, used valid 1344×768).
+- `src/app/layout.tsx` — added `images: [{ url: "/og.png", width: 1344, height: 768, alt: "..." }]` to `openGraph` and `images: ["/og.png"]` to `twitter`. Verified in DOM: `og:image` + `twitter:image` + `og:image:alt` all resolve to `https://doctorooms.com/og.png`.
+
+### Wiring
+- `src/app/page.tsx` — imported + mounted `FAQSection` (between TrustSection and ROICalculator) and `MobileStickyCTA` (after SiteFooter, alongside BackToTop).
+
+## 3. Verification (agent-browser)
+- Reload → 0 page errors, 0 console errors.
+- Full 16-section scroll-through (top → demo) → 0 errors after traversal.
+- FAQ: scrolled to #faq → 7 accordion items render with 01–07 numbering and correct curly-apostrophe text. Clicked item 01 → `[expanded=true]`, answer text correct ("Doctorooms is multi-tenant by design...").
+- Shortcuts dialog: clicked "?" floating button → dialog opens, innerText confirms all 4 shortcuts (B/?/Esc/T) + tip + Close. Esc closes.
+- `T` shortcut: real keypress via `agent-browser press t` → scrollY 3000 → 0 (smooth-scroll to top confirmed). (Synthetic `dispatchEvent` did NOT trigger — real OS keypresses do, which is what users produce.)
+- Mobile sticky CTA: set viewport 390×844, scrolled past hero → bar `display:block`, `visible:true`, height 57px, fixed at bottom. Chapter label correctly reads "The Promise" near top, then "Questions" when #faq is centered in viewport (IntersectionObserver rootMargin -45%/-45% working). Reset to 1280×800 → bar `display:none` (lg:hidden confirmed).
+- OG meta: `og:image` = `https://doctorooms.com/og.png`, `twitter:image` = same, `og:image:alt` = "Doctorooms — healthcare growth & operating platform". File exists at `public/og.png` (70651 bytes).
+- Regression: OrgFit still renders 4 tabs with "Multi-specialty hospital" default-selected; no breakage from this round's changes.
+- `bun run lint` → 0 errors, 0 warnings.
+
+## 4. Unresolved issues / risks + next-phase recommendations
+- No bugs introduced. All new features reduced-motion-aware (CSS handles transitions; AnimatePresence reduced-motion guard in FAQ inherited from patterns). Mobile sticky CTA respects safe-area.
+- **Recommended next-phase work** (priority order):
+  1. **Performance**: code-split the 14+2 sections with `next/dynamic` (ssr:false for the heaviest GSAP-pinned ones like PatientJourney, RoleOrbit, IPDJourney) to shrink initial JS; add `loading.tsx` skeletons. Initial render is already sub-second, so this is an optimization, not a fix.
+  2. **Comparison section**: a "Doctorooms vs. stitched-together tools" comparison table (Fragmented approach: 5–10 disconnected systems + re-entered data vs. Doctorooms: one connected platform). Reinforces the Problem chapter and gives buyers a concrete delta.
+  3. **Lighthouse / Core Web Vitals audit**: run a real Lighthouse pass to quantify LCP/CLS/INP and capture a baseline. LCP candidate is the hero headline (all CSS/SVG mocks, no large images). The new og.png is only loaded by crawlers, not the page, so it won't affect LCP.
+  4. **Structured data (JSON-LD)**: add `SoftwareApplication` / `Organization` schema to layout for richer SERP appearance.
+  5. **On-page demo-request persistence**: the `/api/demo` route already POSTs successfully; consider persisting submissions to SQLite via Prisma so the team can review requests. Currently the route logs to console only.
+
+Handoff: next cron round should pick up item #2 (comparison section) or #1 (code-splitting) and continue polishing. The site is feature-rich and stable; incremental conversion + performance work is the frontier.
+

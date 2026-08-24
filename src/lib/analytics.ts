@@ -17,7 +17,9 @@ export type AnalyticsEvent =
   | "roi_calculator_complete"
   | "demo_form_start"
   | "demo_form_submit"
-  | "pricing_or_contact_intent";
+  | "pricing_or_contact_intent"
+  | "faq_expand"
+  | "keyboard_shortcuts_open";
 
 type Payload = Record<string, string | number | boolean | undefined>;
 

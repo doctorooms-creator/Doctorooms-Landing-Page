@@ -16,11 +16,13 @@ import { OrgFit } from "@/components/doctorooms/org-fit";
 import { IPDJourney } from "@/components/doctorooms/ipd-journey";
 import { RoleOrbit } from "@/components/doctorooms/role-orbit";
 import { TrustSection } from "@/components/doctorooms/trust-section";
+import { FAQSection } from "@/components/doctorooms/faq-section";
 import { ROICalculator } from "@/components/doctorooms/roi-calculator";
 import { FinalCTA } from "@/components/doctorooms/final-cta";
 import { ScrollProgress } from "@/components/doctorooms/scroll-progress";
 import { ChapterNavigator } from "@/components/doctorooms/chapter-navigator";
 import { BackToTop } from "@/components/doctorooms/back-to-top";
+import { MobileStickyCTA } from "@/components/doctorooms/mobile-sticky-cta";
 
 /**
  * Doctorooms — cinematic landing experience.
@@ -72,6 +74,8 @@ export default function Home() {
           <RoleOrbit />
           {/* Chapter 12 — Trust & Security */}
           <TrustSection />
+          {/* Chapter 12½ — Questions (FAQ) */}
+          <FAQSection />
           {/* Chapter 13 — ROI */}
           <ROICalculator />
           {/* Chapter 14 — Final Conversion */}
@@ -80,8 +84,9 @@ export default function Home() {
 
         <SiteFooter />
 
-        {/* Floating actions: back-to-top + keyboard shortcut to book a demo */}
+        {/* Floating actions: back-to-top + keyboard shortcuts + mobile sticky CTA */}
         <BackToTop />
+        <MobileStickyCTA />
       </div>
     </DemoDialogProvider>
   );

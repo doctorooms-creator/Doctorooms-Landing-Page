@@ -44,12 +44,20 @@ export const metadata: Metadata = {
     siteName: "Doctorooms",
     type: "website",
     locale: "en_US",
+    images: [
+      {
+        url: "/og.png",
+        width: 1344,
+        height: 768,
+        alt: "Doctorooms — healthcare growth & operating platform",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Doctorooms — Healthcare Growth & Operating Platform",
-    description:
-      "More Patients. Smarter Operations. One Intelligent Platform.",
+    description: "More Patients. Smarter Operations. One Intelligent Platform.",
+    images: ["/og.png"],
   },
   robots: { index: true, follow: true },
   category: "healthcare",
